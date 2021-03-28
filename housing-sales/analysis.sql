@@ -40,6 +40,7 @@ with base as(
 select
   base.parcelnumber,
   base.acreage,
+  details.zoning,
   extract(year from sales.saledate) as saleyear,
   sales.saleamount,
 from whatthecarp.cville_eda_raw.real_estate_sales sales
