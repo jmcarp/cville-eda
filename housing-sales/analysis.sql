@@ -23,3 +23,31 @@ from (
 )
 where zoning in ('R-1', 'R-2', 'R-3')
 and saleyear >= 2001
+;
+
+create or replace table whatthecarp.cville_eda_derived.sales_by_acreage as
+with base as(
+  select
+    *,
+    rank() over (partition by parcelnumber order by RecordID_Int) as rank
+  from `whatthecarp.cville_eda_raw.real_estate_base`
+), details as (
+  select
+    *,
+    rank() over (partition by parcelnumber order by objectid) as rank
+  from whatthecarp.cville_eda_raw.parcel_area_details
+)
+select
+  base.parcelnumber,
+  base.acreage,
+  extract(year from sales.saledate) as saleyear,
+  sales.saleamount,
+from whatthecarp.cville_eda_raw.real_estate_sales sales
+join base using (parcelnumber)
+join details using (parcelnumber)
+where saleamount != 0
+and base.rank = 1
+and details.rank = 1
+and details.zoning in ('R-1', 'R-2', 'R-3')
+and extract(year from saledate) > 2001
+;

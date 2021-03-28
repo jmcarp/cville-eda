@@ -8,5 +8,9 @@ curl -o real-estate-sales.csv https://opendata.arcgis.com/datasets/489adf140c174
 # https://opendata.charlottesville.org/datasets/parcel-area-details
 curl -o parcel-area-details.csv https://opendata.arcgis.com/datasets/0e9946c2a77d4fc6ad16d9968509c588_72.csv
 
+# https://opendata.charlottesville.org/datasets/real-estate-base-data
+curl -o real-estate-base.csv https://opendata.arcgis.com/datasets/bc72d0590bf940ff952ab113f10a36a8_8.csv
+
 bq load --autodetect --replace whatthecarp:cville_eda_raw.real_estate_sales real-estate-sales.csv
 bq load --autodetect --replace whatthecarp:cville_eda_raw.parcel_area_details parcel-area-details.csv
+bq load --autodetect --replace whatthecarp:cville_eda_raw.real_estate_base real-estate-base.csv
