@@ -17,8 +17,13 @@ geojsonify() {
 
 curl -O https://www2.census.gov/geo/tiger/TIGER2010/TABBLOCK/2010/tl_2010_51_tabblock10.zip
 unzip tl_2010_51_tabblock10.zip -d tl_2010_51_tabblock10
-geojsonify tl_2010_51_tabblock10 tl_2010_51_tabblock10.csv
-bq load --autodetect --replace whatthecarp:cville_eda_raw.tl_2010_51_tabblock10 tl_2010_51_tabblock10.csv
+ogr2ogr \
+  -f csv \
+  -dialect sqlite \
+  -sql "select *, asgeojson(geometry) as geometry from tl_2010_51_tabblock10 where countyfp10 = '540'" \
+  blocks.csv \
+  tl_2010_51_tabblock10
+bq load --autodetect --replace whatthecarp:cville_eda_raw.census_blocks blocks.csv
 
 curl -o parcel-area-details.zip https://opendata.arcgis.com/datasets/0e9946c2a77d4fc6ad16d9968509c588_72.zip
 unzip parcel-area-details.zip -d parcel-area-details
@@ -43,14 +48,14 @@ select
 from (
   select
     details.objectid,
+    details.parcelnumb as parcelnumber,
     blocks.countyfp10,
     blocks.tractce10,
     blocks.blockce10,
     blocks.geoid10,
     rank() over (partition by details.objectid order by st_area(st_intersection(st_geogfromgeojson(details.geometry), st_geogfromgeojson(blocks.geometry))) desc) as rank
   from `whatthecarp.cville_eda_raw.parcel_area_details` details
-  cross join `whatthecarp.cville_eda_raw.tl_2010_51_tabblock10` blocks
-  where blocks.countyfp10 = 540 -- Charlottesville City
+  cross join `whatthecarp.cville_eda_raw.census_blocks` blocks
 )
 where rank = 1'
 
@@ -83,3 +88,36 @@ from (
   cross join `whatthecarp.cville_eda_raw.park_area` park
 )
 where rank = 1'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.value_by_block` as
+with details as (
+  select
+    *,
+    rank() over (partition by parcelnumb order by objectid) as rank
+  from `whatthecarp.cville_eda_raw.parcel_area_details`
+), base as (
+  select
+    *,
+    rank() over (partition by parcelnumber order by recordid_int) as rank
+  from `whatthecarp.cville_eda_raw.real_estate_base`
+), assessments as (
+  select
+    *,
+    rank() over (partition by parcelnumber order by recordid_int) as rank
+  from `whatthecarp.cville_eda_raw.real_estate_assessments`
+)
+select distinct
+  parcel_to_block.geoid10,
+  percentile_cont(assessments.landvalue, 0.5) over (partition by parcel_to_block.geoid10) as landvalue,
+  percentile_cont(assessments.landvalue / base.acreage, 0.5) over (partition by parcel_to_block.geoid10) as landvalueperacre,
+from details
+join base on (details.parcelnumb = base.parcelnumber)
+join assessments on (details.parcelnumb = assessments.parcelnumber)
+join `whatthecarp.cville_eda_derived.parcel_to_block` parcel_to_block on (details.parcelnumb = parcel_to_block.parcelnumber)
+where details.rank = 1
+  and base.rank = 1
+  and assessments.rank = 1
+  and details.filetype = 'R'
+  and base.acreage != 0
+  and assessments.landvalue != 0'
