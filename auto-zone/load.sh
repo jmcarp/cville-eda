@@ -49,9 +49,35 @@ select distinct * except (recordid_int) from `whatthecarp.cville_eda_raw.real_es
 ogr2ogr \
   -f GeoJSON \
   -dialect sqlite \
-  -sql "select distinct filetype, parcelnumb, streetname, streetnumb, unit, zoning, geometry from parcel_area_details" \
   parcel-area-details.geojson \
-  parcel-area-details
+  parcel-area-details \
+  -sql "$(cat <<EOF
+select
+  geoparceli as gpin,
+  group_concat(parcelnumb, ', ') as parcelnumbers,
+  group_concat(address, ', ') as addresses,
+  st_union(geometry) as geometry
+from (
+  select
+    *,
+    coalesce(streetnumb, '?') || ' ' || streetname as address
+  from parcel_area_details
+)
+group by geoparceli
+EOF
+)"
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.geopin` as
+select
+  geoparceli as gpin,
+  array_agg(
+    distinct concat(coalesce(streetnumb, "?"), " ", streetname)
+    order by concat(coalesce(streetnumb, "?"), " ", streetname)
+  ) as addresses,
+  st_union_agg(st_geogfromgeojson(geometry)) as geometry
+from `whatthecarp.cville_eda_raw.parcel_area_details`
+group by geoparceli'
 
 curl -o bus-stop-points.zip https://opendata.arcgis.com/datasets/6465cd54bcf4498495be8c86a9d7c3f2_4.zip
 unzip bus-stop-points.zip -d bus-stop-points
@@ -66,79 +92,85 @@ bq load --autodetect --replace whatthecarp:cville_eda_raw.park_area park-area.cs
 
 # Map parcels to tracts to simplify block mapping below
 bq query --nouse_legacy_sql \
-'create or replace table `whatthecarp.cville_eda_derived.parcel_to_tract` as
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_tract` as
 select
   * except (rank)
 from (
   select
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     tracts.countyfp10,
     tracts.tractce10,
     tracts.geoid10,
-    row_number() over (partition by details.parcelnumb order by st_area(st_intersection(st_geogfromgeojson(details.geometry), st_geogfromgeojson(tracts.geometry))) desc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    row_number() over (partition by gpin.gpin order by st_area(st_intersection(gpin.geometry, st_geogfromgeojson(tracts.geometry))) desc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_raw.census_tracts` tracts
 )
 where rank = 1'
 
 bq query --nouse_legacy_sql \
-'create or replace table `whatthecarp.cville_eda_derived.parcel_to_block` as
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_block` as
 select
   * except (rank)
 from (
   select
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     blocks.countyfp10,
     blocks.tractce10,
     blocks.blockce10,
     blocks.geoid10,
-    row_number() over (partition by details.parcelnumb order by st_area(st_intersection(st_geogfromgeojson(details.geometry), st_geogfromgeojson(blocks.geometry))) desc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
-  join `whatthecarp.cville_eda_derived.parcel_to_tract` tracts on details.parcelnumb = tracts.parcelnumber
+    row_number() over (partition by gpin.gpin order by st_area(st_intersection(gpin.geometry, st_geogfromgeojson(blocks.geometry))) desc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
+  join `whatthecarp.cville_eda_derived.geopin_to_tract` tracts on gpin.gpin = tracts.gpin
   join `whatthecarp.cville_eda_raw.census_blocks` blocks on tracts.tractce10 = blocks.tractce10
 )
 where rank = 1'
 
 bq query --nouse_legacy_sql \
-'create or replace table `whatthecarp.cville_eda_derived.parcel_to_cat` as
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_cat` as
 select
   * except (rank)
 from (
   select
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     cat.stopid,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(cat.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(cat.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(cat.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(cat.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_raw.bus_stop_points` cat
 )
 where rank = 1'
 
 bq query --nouse_legacy_sql \
-'create or replace table `whatthecarp.cville_eda_derived.parcel_to_park` as
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_park` as
 select
   * except (rank)
 from (
   select
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     park.objectid as parkid,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(park.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(park.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(park.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(park.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_raw.park_area` park
 )
 where rank = 1'
 
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.value_by_block` as
+with values as (
+  select
+    details.geoparceli as gpin,
+    sum(assessments.landvalue) as landvalue,
+    sum(assessments.landvalue) / st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as landvaluepersqm
+  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+  join `whatthecarp.cville_eda_raw.real_estate_assessments` assessments on (details.parcelnumb = assessments.parcelnumber)
+  where assessments.taxyear = 2021
+  group by details.geoparceli
+)
 select distinct
-  parcel_to_block.geoid10,
-  percentile_cont(assessments.landvalue, 0.5) over (partition by parcel_to_block.geoid10) as landvalue,
-  percentile_cont(assessments.landvalue / base.acreage, 0.5) over (partition by parcel_to_block.geoid10) as landvalueperacre,
-from `whatthecarp.cville_eda_raw.parcel_area_details` details
-join `whatthecarp.cville_eda_raw.real_estate_base` base on (details.parcelnumb = base.parcelnumber)
-join `whatthecarp.cville_eda_raw.real_estate_assessments` assessments on (details.parcelnumb = assessments.parcelnumber)
-join `whatthecarp.cville_eda_derived.parcel_to_block` parcel_to_block on (details.parcelnumb = parcel_to_block.parcelnumber)
-where details.filetype = "R"
-  and base.acreage != 0
-  and assessments.landvalue != 0'
+  gpin_to_block.geoid10,
+  percentile_cont(values.landvalue, 0.5) over (partition by gpin_to_block.geoid10) as landvalue,
+  percentile_cont(values.landvaluepersqm, 0.5) over (partition by gpin_to_block.geoid10) as landvaluepersqm,
+from values
+join `whatthecarp.cville_eda_derived.geopin_to_block` gpin_to_block using (gpin)
+where values.landvalue > 0'

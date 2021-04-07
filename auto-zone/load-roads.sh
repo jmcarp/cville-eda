@@ -37,13 +37,12 @@ select
   * except (rank)
 from (
   select
-    details.objectid,
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     roads.osm_id,
     roads.ref,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geoparcelid` gpin
   cross join roads
 )
 where rank = 1'
@@ -62,13 +61,12 @@ select
   * except (rank)
 from (
   select
-    details.objectid,
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     roads.osm_id,
     roads.ref,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geoparcelid` gpin
   cross join roads
 )
 where rank = 1'
@@ -87,13 +85,12 @@ select
   * except (rank)
 from (
   select
-    details.objectid,
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     roads.osm_id,
     roads.ref,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geoparcelid` gpin
   cross join roads
 )
 where rank = 1'
@@ -112,13 +109,12 @@ select
   * except (rank)
 from (
   select
-    details.objectid,
-    details.parcelnumb as parcelnumber,
+    gpin.gpin,
     roads.osm_id,
     roads.ref,
-    st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) as distance,
-    row_number() over (partition by details.parcelnumb order by st_distance(st_geogfromgeojson(details.geometry), st_geogfromgeojson(roads.geometry)) asc) as rank
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(roads.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geoparcelid` gpin
   cross join roads
 )
 where rank = 1'
