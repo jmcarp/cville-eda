@@ -54,15 +54,9 @@ ogr2ogr \
   -sql "$(cat <<EOF
 select
   geoparceli as gpin,
-  group_concat(parcelnumb, ', ') as parcelnumbers,
-  group_concat(address, ', ') as addresses,
-  st_union(geometry) as geometry
-from (
-  select
-    *,
-    coalesce(streetnumb, '?') || ' ' || streetname as address
-  from parcel_area_details
-)
+  x(st_centroid(st_union(geometry))) as lat,
+  y(st_centroid(st_union(geometry))) as lon
+from parcel_area_details
 group by geoparceli
 EOF
 )"
