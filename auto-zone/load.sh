@@ -150,21 +150,24 @@ from (
 where rank = 1'
 
 bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.value_by_geopin` as
+select
+  details.geoparceli as gpin,
+  sum(assessments.landvalue) as landvalue,
+  st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as sqm,
+  sum(assessments.landvalue) / st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as landvaluepersqm
+from `whatthecarp.cville_eda_raw.parcel_area_details` details
+join `whatthecarp.cville_eda_raw.real_estate_assessments` assessments on (details.parcelnumb = assessments.parcelnumber)
+where assessments.taxyear = 2021
+group by details.geoparceli'
+
+bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.value_by_block` as
-with values as (
-  select
-    details.geoparceli as gpin,
-    sum(assessments.landvalue) as landvalue,
-    sum(assessments.landvalue) / st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as landvaluepersqm
-  from `whatthecarp.cville_eda_raw.parcel_area_details` details
-  join `whatthecarp.cville_eda_raw.real_estate_assessments` assessments on (details.parcelnumb = assessments.parcelnumber)
-  where assessments.taxyear = 2021
-  group by details.geoparceli
-)
-select distinct
+select
   gpin_to_block.geoid10,
-  percentile_cont(values.landvalue, 0.5) over (partition by gpin_to_block.geoid10) as landvalue,
-  percentile_cont(values.landvaluepersqm, 0.5) over (partition by gpin_to_block.geoid10) as landvaluepersqm,
-from values
+  avg(values.landvalue) as landvalue,
+  avg(values.landvaluepersqm) as landvaluepersqm,
+from `whatthecarp.cville_eda_derived.value_by_geopin` values
 join `whatthecarp.cville_eda_derived.geopin_to_block` gpin_to_block using (gpin)
-where values.landvalue > 0'
+where values.landvalue > 0
+group by gpin_to_block.geoid10'
