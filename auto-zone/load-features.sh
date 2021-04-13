@@ -17,6 +17,7 @@ select
   walkscore.bikescore / 100 as bikescore,
   values.landvaluepersqm,
   (values.landvaluepersqm - avg(values.landvaluepersqm) over ()) / (max(values.landvaluepersqm) over () - min(values.landvaluepersqm) over ()) + 0.5 as landvaluepersqm_norm,
+  values.sqm,
   acs.prop_white,
   acs.prop_black,
 from `whatthecarp.cville_eda_derived.geopin` gpin
@@ -33,6 +34,10 @@ where gpin.gpin not in (
   select
     gpin
   from `whatthecarp.cville_eda_derived.school_parcels`
+  union all
+  select
+    gpin
+  from `whatthecarp.cville_eda_derived.park_parcels`
 )'
 
 bq extract whatthecarp:cville_eda_derived.autozone_features gs://whatthecarp-scratch/autozone_features.csv

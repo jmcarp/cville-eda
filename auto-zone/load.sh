@@ -47,14 +47,25 @@ select distinct * except (recordid_int) from `whatthecarp.cville_eda_raw.real_es
 
 # Load school parcels
 bq load --schema 'name:STRING,parcelnumber:STRING' --skip_leading_rows 1 --replace whatthecarp:cville_eda_raw.school_parcels school-parcels.csv
-
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.school_parcels` as
 select
   school.*,
-  details.geoparceli as gpin
+  details.geoparceli as gpin,
+  details.* except(geoparceli)
 from `whatthecarp.cville_eda_raw.school_parcels` school
 join `whatthecarp.cville_eda_raw.parcel_area_details` details on school.parcelnumber = details.parcelnumb'
+
+# Load park parcels
+bq load --schema 'name:STRING,parcelnumber:STRING' --skip_leading_rows 1 --replace whatthecarp:cville_eda_raw.park_parcels park-parcels.csv
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.park_parcels` as
+select
+  park.*,
+  details.geoparceli as gpin,
+  details.* except (geoparceli)
+from `whatthecarp.cville_eda_raw.park_parcels` park
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on park.parcelnumber = details.parcelnumb'
 
 # Write parcels to geojson for visualization
 ogr2ogr \
@@ -153,11 +164,11 @@ select
 from (
   select
     gpin.gpin,
-    park.objectid as parkid,
+    park.name as parkname,
     st_distance(gpin.geometry, st_geogfromgeojson(park.geometry)) as distance,
     row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(park.geometry)) asc) as rank
   from `whatthecarp.cville_eda_derived.geopin` gpin
-  cross join `whatthecarp.cville_eda_raw.park_area` park
+  cross join `whatthecarp.cville_eda_derived.park_parcels` park
 )
 where rank = 1'
 
@@ -193,6 +204,7 @@ bq query --nouse_legacy_sql \
 select
   gpin_to_block.geoid10,
   avg(values.landvalue) as landvalue,
+  avg(values.sqm) as sqm,
   avg(values.landvaluepersqm) as landvaluepersqm,
 from `whatthecarp.cville_eda_derived.value_by_geopin` values
 join `whatthecarp.cville_eda_derived.geopin_to_block` gpin_to_block using (gpin)
