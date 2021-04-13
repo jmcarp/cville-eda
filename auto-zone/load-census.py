@@ -11,11 +11,11 @@ BASE_URL = "https://api.census.gov/data"
 SF1_URL = "https://api.census.gov/data/2010/dec/sf1"
 ACS_URL = "https://api.census.gov/data/2019/acs/acs5"
 
-"2010/dec/sf1"
 VIRGINIA_FIPS = "51"
 CHARLOTTESVILLE_FIPS = "540"
 SF1_RACE_PATH = "sf1-race.csv"
 ACS_RACE_PATH = "acs-race.csv"
+ACS_INCOME_PATH = "acs-race.csv"
 
 
 def main():

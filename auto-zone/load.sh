@@ -45,6 +45,17 @@ bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_raw.real_estate_assessments` as
 select distinct * except (recordid_int) from `whatthecarp.cville_eda_raw.real_estate_assessments`'
 
+# Load school parcels
+bq load --schema 'name:STRING,parcelnumber:STRING' --skip_leading_rows 1 --replace whatthecarp:cville_eda_raw.school_parcels school-parcels.csv
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.school_parcels` as
+select
+  school.*,
+  details.geoparceli as gpin
+from `whatthecarp.cville_eda_raw.school_parcels` school
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on school.parcelnumber = details.parcelnumb'
+
 # Write parcels to geojson for visualization
 ogr2ogr \
   -f GeoJSON \
@@ -65,6 +76,7 @@ bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.geopin` as
 select
   geoparceli as gpin,
+  count(parcelnumb) as parcels,
   array_agg(
     distinct concat(coalesce(streetnumb, "?"), " ", streetname)
     order by concat(coalesce(streetnumb, "?"), " ", streetname)
@@ -146,6 +158,21 @@ from (
     row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(park.geometry)) asc) as rank
   from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_raw.park_area` park
+)
+where rank = 1'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_school` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    school.name as schoolname,
+    st_distance(gpin.geometry, st_geogfromgeojson(school.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(school.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
+  cross join `whatthecarp.cville_eda_derived.school_parcels` school
 )
 where rank = 1'
 
