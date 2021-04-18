@@ -193,7 +193,7 @@ select
   details.geoparceli as gpin,
   sum(assessments.landvalue) as landvalue,
   st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as sqm,
-  sum(assessments.landvalue) / st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as landvaluepersqm
+  sum(assessments.landvalue) / st_area(st_union_agg(st_geogfromgeojson(details.geometry))) as landvaluepersqm,
 from `whatthecarp.cville_eda_raw.parcel_area_details` details
 join `whatthecarp.cville_eda_raw.real_estate_assessments` assessments on (details.parcelnumb = assessments.parcelnumber)
 where assessments.taxyear = 2021
@@ -206,6 +206,7 @@ select
   avg(values.landvalue) as landvalue,
   avg(values.sqm) as sqm,
   avg(values.landvaluepersqm) as landvaluepersqm,
+  percent_rank() over (order by avg(values.landvaluepersqm)) as landvaluepersqmrank,
 from `whatthecarp.cville_eda_derived.value_by_geopin` values
 join `whatthecarp.cville_eda_derived.geopin_to_block` gpin_to_block using (gpin)
 where values.landvalue > 0

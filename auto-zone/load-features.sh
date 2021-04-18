@@ -15,9 +15,13 @@ select
   walkscore.walkscore / 100 as walkscore,
   walkscore.transitscore / 100 as transitscore,
   walkscore.bikescore / 100 as bikescore,
-  values.landvaluepersqm,
-  (values.landvaluepersqm - avg(values.landvaluepersqm) over ()) / (max(values.landvaluepersqm) over () - min(values.landvaluepersqm) over ()) + 0.5 as landvaluepersqm_norm,
+  values.landvalue,
   values.sqm,
+  values.landvaluepersqm,
+  values.landvaluepersqmrank,
+  (values.landvaluepersqm - avg(values.landvaluepersqm) over ()) / (max(values.landvaluepersqm) over () - min(values.landvaluepersqm) over ()) + 0.5 as landvaluepersqm_norm,
+  vbg.landvaluepersqm as landvaluepersqm_parcel,
+  percent_rank() over (order by vbg.landvaluepersqm) as landvaluepersqmrank_parcel,
   acs.prop_white,
   acs.prop_black,
 from `whatthecarp.cville_eda_derived.geopin` gpin
@@ -30,6 +34,7 @@ left join `whatthecarp.cville_eda_raw.walkscore` walkscore on gpin.gpin = walksc
 left join `whatthecarp.cville_eda_derived.geopin_to_block` gpin_to_block on gpin.gpin = gpin_to_block.gpin
 left join `whatthecarp.cville_eda_derived.value_by_block` values on gpin_to_block.geoid10 = values.geoid10
 left join `whatthecarp.cville_eda_derived.acs_race` acs on cast(floor(gpin_to_block.geoid10 / 1000) as int64) = cast(acs.geoid10 as int64)
+left join `whatthecarp.cville_eda_derived.value_by_geopin` vbg on gpin.gpin = vbg.gpin
 where gpin.gpin not in (
   select
     gpin
