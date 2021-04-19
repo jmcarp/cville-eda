@@ -13,32 +13,76 @@ ACS_URL = "https://api.census.gov/data/2019/acs/acs5"
 
 VIRGINIA_FIPS = "51"
 CHARLOTTESVILLE_FIPS = "540"
-SF1_RACE_PATH = "sf1-race.csv"
-ACS_RACE_PATH = "acs-race.csv"
-ACS_INCOME_PATH = "acs-race.csv"
+SF1_EXPORT_PATH = "sf1-export.csv"
+ACS_BLOCKGROUP_EXPORT_PATH = "acs-blockgroup-export.csv"
+ACS_TRACT_EXPORT_PATH = "acs-tract-export.csv"
+
+SF1_VARIABLES = [
+    "P003001",
+    "P003002",
+    "P003003",
+    "P005001",
+    "P005003",
+    "P005004",
+    "P005010",
+]
+
+ACS_BLOCKGROUP_VARIABLES = [
+    # Race
+    "B02001_001E",
+    "B02001_002E",
+    "B02001_003E",
+    # Income
+    "B19013_001E",
+    # Tenure
+    "B25003_001E",
+    "B25003_002E",
+    # Education
+    "B15003_001E",
+    "B15003_021E",
+    "B15003_022E",
+    "B15003_023E",
+    "B15003_024E",
+    "B15003_025E",
+]
+ACS_TRACT_VARIABLES = [
+    # School enrollment
+    "B14001_001E",
+    "B14001_008E",
+    # Poverty status of families
+    "B17012_001E",
+    "B17012_002E",
+]
 
 
 def main():
-    sf1_rows = fetch_sf1("P003001", "P003002", "P003003", "P005001", "P005003", "P005004", "P005010")
-    with open(SF1_RACE_PATH, "w") as fp:
-        writer = csv.DictWriter(fp, fieldnames=sf1_rows[0].keys())
+    rows = fetch_sf1(SF1_VARIABLES)
+    with open(SF1_EXPORT_PATH, "w") as fp:
+        writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
         writer.writeheader()
-        for row in sf1_rows:
+        for row in rows:
             writer.writerow(row)
 
-    acs_rows = fetch_acs("B02001_001E", "B02001_002E", "B02001_003E")
-    with open(ACS_RACE_PATH, "w") as fp:
-        writer = csv.DictWriter(fp, fieldnames=acs_rows[0].keys())
+    rows = fetch_acs(ACS_BLOCKGROUP_VARIABLES, "block group")
+    with open(ACS_BLOCKGROUP_EXPORT_PATH, "w") as fp:
+        writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
         writer.writeheader()
-        for row in acs_rows:
+        for row in rows:
+            writer.writerow(row)
+
+    rows = fetch_acs(ACS_TRACT_VARIABLES, "tract")
+    with open(ACS_TRACT_EXPORT_PATH, "w") as fp:
+        writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
+        writer.writeheader()
+        for row in rows:
             writer.writerow(row)
 
 
-def fetch_sf1(*questions) -> List[Dict]:
+def fetch_sf1(questions: List[str]) -> List[Dict]:
     response = requests.get(
         SF1_URL,
         params={
-            "get": ",".join([*questions, "NAME"]),
+            "get": ",".join(["NAME", *questions]),
             "for": "block",
             "in": f"state:{VIRGINIA_FIPS} county:{CHARLOTTESVILLE_FIPS}",
         },
@@ -49,12 +93,12 @@ def fetch_sf1(*questions) -> List[Dict]:
     return [dict(zip(header, row)) for row in rows]
 
 
-def fetch_acs(*questions) -> List[Dict]:
+def fetch_acs(questions: List[str], for_: str) -> List[Dict]:
     response = requests.get(
         ACS_URL,
         params={
-            "get": ",".join([*questions, "NAME"]),
-            "for": "block group",
+            "get": ",".join(["NAME", *questions]),
+            "for": for_,
             "in": f"state:{VIRGINIA_FIPS} county:{CHARLOTTESVILLE_FIPS}",
         },
     )

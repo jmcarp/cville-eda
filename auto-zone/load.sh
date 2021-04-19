@@ -67,6 +67,9 @@ select
 from `whatthecarp.cville_eda_raw.park_parcels` park
 join `whatthecarp.cville_eda_raw.parcel_area_details` details on park.parcelnumber = details.parcelnumb'
 
+# Load student blockgroups
+bq load --schema 'blockgroup:STRING' --skip_leading_rows 1 --replace whatthecarp:cville_eda_raw.student_blockgroups student-blockgroups.csv
+
 # Write parcels to geojson for visualization
 ogr2ogr \
   -f GeoJSON \
