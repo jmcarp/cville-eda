@@ -145,6 +145,25 @@ from (
 )
 where rank = 1'
 
+curl https://api.devhub.virginia.edu/v1/transit/bus-stops | jq -c '.stops | .[]' > uva-stops.ndjson
+bq load --autodetect --replace --source_format NEWLINE_DELIMITED_JSON whatthecarp:cville_eda_raw.uva_stops uva-stops.ndjson
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_uts` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    uts.id,
+    uts.name,
+    st_distance(gpin.geometry, st_geogpoint(uts.position[offset(1)], uts.position[offset(0)])) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogpoint(uts.position[offset(1)], uts.position[offset(0)])) asc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
+  cross join `whatthecarp.cville_eda_raw.uva_stops` uts
+)
+where rank = 1'
+
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.geopin_to_cat` as
 select

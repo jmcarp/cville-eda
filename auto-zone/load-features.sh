@@ -7,6 +7,7 @@ bq query --nouse_legacy_sql \
 select
   gpin.gpin,
   cat.distance as cat_distance,
+  uts.distance as uts_distance,
   parks.distance as parks_distance,
   schools.distance as schools_distance,
   roads.distance as roads_distance,
@@ -28,6 +29,7 @@ select
   acs_tract.prop_families_in_poverty,
 from `whatthecarp.cville_eda_derived.geopin` gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_cat` cat on gpin.gpin = cat.gpin
+left join `whatthecarp.cville_eda_derived.geopin_to_uts` uts on gpin.gpin = uts.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_park` parks on gpin.gpin = parks.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_school` schools on gpin.gpin = schools.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_roads` roads on gpin.gpin = roads.gpin
