@@ -9,18 +9,20 @@ import requests
 
 BASE_URL = "https://api.census.gov/data"
 SF1_URL = "https://api.census.gov/data/2010/dec/sf1"
-ACS_URL = "https://api.census.gov/data/2019/acs/acs5"
+ACS_URL = "https://api.census.gov/data/{year}/acs/acs5"
 
 VIRGINIA_FIPS = "51"
 CHARLOTTESVILLE_FIPS = "540"
 SF1_EXPORT_PATH = "sf1-export.csv"
 ACS_BLOCKGROUP_EXPORT_PATH = "acs-blockgroup-export.csv"
+ACS_BLOCKGROUP_BY_YEAR_EXPORT_PATH = "acs-blockgroup-by-year-export.csv"
 ACS_TRACT_EXPORT_PATH = "acs-tract-export.csv"
 
 SF1_VARIABLES = [
     "P003001",
     "P003002",
     "P003003",
+    "P003005",
     "P005001",
     "P005003",
     "P005004",
@@ -32,6 +34,7 @@ ACS_BLOCKGROUP_VARIABLES = [
     "B02001_001E",
     "B02001_002E",
     "B02001_003E",
+    "B02001_005E",
     # Income
     "B19013_001E",
     # Tenure
@@ -63,15 +66,28 @@ def main():
         for row in rows:
             writer.writerow(row)
 
-    rows = fetch_acs(ACS_BLOCKGROUP_VARIABLES, "block group")
+    rows = fetch_acs(ACS_BLOCKGROUP_VARIABLES, "block group", 2019)
     with open(ACS_BLOCKGROUP_EXPORT_PATH, "w") as fp:
         writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
         writer.writeheader()
         for row in rows:
             writer.writerow(row)
 
-    rows = fetch_acs(ACS_TRACT_VARIABLES, "tract")
+    rows = fetch_acs(ACS_TRACT_VARIABLES, "tract", 2019)
     with open(ACS_TRACT_EXPORT_PATH, "w") as fp:
+        writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
+        writer.writeheader()
+        for row in rows:
+            writer.writerow(row)
+
+    rows = []
+    for year in range(2019, 2012, -1):
+        batch = fetch_acs(ACS_BLOCKGROUP_VARIABLES, "block group", year)
+        rows.extend([
+            {**row, "year": year}
+            for row in batch
+        ])
+    with open(ACS_BLOCKGROUP_BY_YEAR_EXPORT_PATH, "w") as fp:
         writer = csv.DictWriter(fp, fieldnames=rows[0].keys())
         writer.writeheader()
         for row in rows:
@@ -93,9 +109,9 @@ def fetch_sf1(questions: List[str]) -> List[Dict]:
     return [dict(zip(header, row)) for row in rows]
 
 
-def fetch_acs(questions: List[str], for_: str) -> List[Dict]:
+def fetch_acs(questions: List[str], for_: str, year: int) -> List[Dict]:
     response = requests.get(
-        ACS_URL,
+        ACS_URL.format(year=year),
         params={
             "get": ",".join(["NAME", *questions]),
             "for": for_,

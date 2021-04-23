@@ -6,6 +6,7 @@ python load-census.py
 
 bq load --autodetect --replace whatthecarp:cville_eda_raw.sf1 sf1-export.csv
 bq load --autodetect --replace whatthecarp:cville_eda_raw.acs_blockgroup acs-blockgroup-export.csv
+bq load --autodetect --replace whatthecarp:cville_eda_raw.acs_blockgroup_by_year acs-blockgroup-by-year-export.csv
 bq load --autodetect --replace whatthecarp:cville_eda_raw.acs_tract acs-tract-export.csv
 
 bq query --nouse_legacy_sql \

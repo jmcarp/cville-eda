@@ -51,7 +51,9 @@ bq query --nouse_legacy_sql \
 select
   whatthecarp.cville_eda_derived.standardize_zone(details.zoning) as zoning,
   avg(safe_divide(P003003, P003001)) as prop_black,
+  avg(safe_divide(P003005, P003001)) as prop_asian,
   avg(safe_divide(P003002, P003001)) as prop_white,
+  avg(1 - safe_divide(P003002 + P003003 + P003005, P003001)) as prop_other,
   count(details.zoning) as parcels,
 from `whatthecarp.cville_eda_raw.parcel_area_details` details
 join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.GeoParcelI = g2b.gpin
@@ -63,14 +65,17 @@ group by zoning'
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.acs_by_zoning` as
 select
+  year,
   whatthecarp.cville_eda_derived.standardize_zone(details.zoning) as zoning,
   avg(safe_divide(B02001_003E, B02001_001E)) as prop_black,
+  avg(safe_divide(B02001_005E, B02001_001E)) as prop_asian,
   avg(safe_divide(B02001_002E, B02001_001E)) as prop_white,
+  avg(1 - safe_divide(B02001_002E + B02001_003E + B02001_005E, B02001_001E)) as prop_other,
   avg(if(B19013_001E >= 0, B19013_001E, null)) as income,
   count(details.zoning) as parcels,
 from `whatthecarp.cville_eda_raw.parcel_area_details` details
 join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.GeoParcelI = g2b.gpin
-join `whatthecarp.cville_eda_raw.acs_blockgroup` acs
+join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
   on cast(floor(g2b.geoid10 / 1000) as string) =
   concat(format("%02d", acs.state), format("%03d", acs.county), format("%06d", acs.tract), format("%01d", acs.block_group))
-group by zoning'
+group by zoning, acs.year'
