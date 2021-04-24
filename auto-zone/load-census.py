@@ -47,6 +47,10 @@ ACS_BLOCKGROUP_VARIABLES = [
     "B15003_023E",
     "B15003_024E",
     "B15003_025E",
+    # Tenure by units in structure
+    "B25032_001E",  # Total
+    "B25032_003E",  # Owner-occupied housing units:!!1, detached
+    "B25032_014E",  # Renter-occupied housing units:!!1, detached
 ]
 ACS_TRACT_VARIABLES = [
     # School enrollment

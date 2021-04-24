@@ -3,6 +3,39 @@
 set -euo pipefail
 
 bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.parcel_to_address` as
+select
+    parcelnumb as parcelnumber,
+    address,
+    geo_mat_ma as masteraddressid,
+from (
+    select
+        details.*,
+        points.*,
+        row_number() over (partition by points.objectid order by st_distance(points.geography, st_geogfromgeojson(details.geometry))) as rank,
+    from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    cross join `whatthecarp.cville_eda_derived.master_address_points` points
+    where st_dwithin(points.geography, st_geogfromgeojson(details.geometry), 15)
+)
+where rank = 1'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.parcel_to_address_geocode` as
+select
+    parcelnumb as parcelnumber,
+    address_id,
+from (
+    select
+        details.*,
+        geocoded.*,
+        row_number() over (partition by geocoded.address_id order by st_distance(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry))) as rank,
+    from `whatthecarp.cville_eda_raw.parcel_area_details` details
+    cross join `whatthecarp.cville_eda_raw.master_addresses_geocoded` geocoded
+    where st_dwithin(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry), 15)
+)
+where rank = 1'
+
+bq query --nouse_legacy_sql \
 'create or replace function whatthecarp.cville_eda_derived.standardize_zone(zone string) returns string as (
 case zone
   when "R-1UH" then "R-1U"
@@ -54,9 +87,10 @@ select
   avg(safe_divide(P003005, P003001)) as prop_asian,
   avg(safe_divide(P003002, P003001)) as prop_white,
   avg(1 - safe_divide(P003002 + P003003 + P003005, P003001)) as prop_other,
-  count(details.zoning) as parcels,
-from `whatthecarp.cville_eda_raw.parcel_area_details` details
-join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.GeoParcelI = g2b.gpin
+  count(details.zoning) as addresses,
+from `whatthecarp.cville_eda_derived.parcel_to_address_geocode` p2a
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on p2a.parcelnumber = details.parcelnumb
+join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.geoparceli = g2b.gpin
 join `whatthecarp.cville_eda_raw.sf1` sf1
   on cast(g2b.geoid10 as string) =
   concat(format("%02d", sf1.state), format("%03d", sf1.county), format("%06d", sf1.tract), format("%04d", sf1.block))
@@ -72,9 +106,11 @@ select
   avg(safe_divide(B02001_002E, B02001_001E)) as prop_white,
   avg(1 - safe_divide(B02001_002E + B02001_003E + B02001_005E, B02001_001E)) as prop_other,
   avg(if(B19013_001E >= 0, B19013_001E, null)) as income,
-  count(details.zoning) as parcels,
-from `whatthecarp.cville_eda_raw.parcel_area_details` details
-join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.GeoParcelI = g2b.gpin
+  avg(safe_divide(B25032_003E + B25032_014E, B25032_001E)) as prop_sfd,
+  count(details.zoning) as addresses,
+from `whatthecarp.cville_eda_derived.parcel_to_address_geocode` p2a
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on p2a.parcelnumber = details.parcelnumb
+join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on details.geoparceli = g2b.gpin
 join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
   on cast(floor(g2b.geoid10 / 1000) as string) =
   concat(format("%02d", acs.state), format("%03d", acs.county), format("%06d", acs.tract), format("%01d", acs.block_group))
