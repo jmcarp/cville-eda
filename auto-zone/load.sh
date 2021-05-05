@@ -21,6 +21,9 @@ unzip tl_2010_51_tabblock10.zip -d tl_2010_51_tabblock10
 geojsonify tl_2010_51_tabblock10 blocks.csv "select *, asgeojson(geometry) as geometry from tl_2010_51_tabblock10 where countyfp10 = '540'"
 bq load --autodetect --replace whatthecarp:cville_eda_raw.census_blocks blocks.csv
 
+geojsonify tl_2010_51_tabblock10 blocks-metro.csv "select *, asgeojson(geometry) as geometry from tl_2010_51_tabblock10 where countyfp10 in ('540', '003')"
+bq load --autodetect --replace whatthecarp:cville_eda_raw.census_blocks_metro blocks-metro.csv
+
 curl -O https://www2.census.gov/geo/tiger/TIGER2010/TRACT/2010/tl_2010_51_tract10.zip
 unzip tl_2010_51_tract10.zip -d tl_2010_51_tract10
 geojsonify tl_2010_51_tract10 tracts.csv "select *, asgeojson(geometry) as geometry from tl_2010_51_tract10 where countyfp10 = '540'"
@@ -84,9 +87,14 @@ ogr2ogr \
   -sql "$(cat <<EOF
 select
   geoparceli as gpin,
-  x(st_centroid(st_union(geometry))) as lat,
-  y(st_centroid(st_union(geometry))) as lon
-from parcel_area_details
+  group_concat(distinct coalesce(streetnumb, '?') || ' ' || streetname) as addresses,
+  geometry
+from (
+  select
+    *
+  from parcel_area_details
+  order by coalesce(streetnumb, '?') || ' ' || streetname
+)
 group by geoparceli
 EOF
 )"
@@ -211,6 +219,31 @@ from (
     row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(school.geometry)) asc) as rank
   from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_derived.school_parcels` school
+)
+where rank = 1'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_uva` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    blocks.geoid10,
+    st_distance(gpin.geometry, st_geogfromgeojson(blocks.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(blocks.geometry)) asc) as rank
+  from `whatthecarp.cville_eda_derived.geopin` gpin
+  cross join (
+    select
+      *
+    from `whatthecarp.cville_eda_raw.census_blocks_metro` blocks
+    where floor(geoid10 / 1000) in (
+      510030109032,
+      510030109031,
+      510030109022,
+      510030109021
+    )
+  ) blocks
 )
 where rank = 1'
 

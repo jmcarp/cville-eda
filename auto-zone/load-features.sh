@@ -10,6 +10,7 @@ select
   uts.distance as uts_distance,
   parks.distance as parks_distance,
   schools.distance as schools_distance,
+  uva.distance as uva_distance,
   roads.distance as roads_distance,
   roads_local.distance as roads_distance_local,
   nwi.natwalkind,
@@ -33,6 +34,7 @@ left join `whatthecarp.cville_eda_derived.geopin_to_cat` cat on gpin.gpin = cat.
 left join `whatthecarp.cville_eda_derived.geopin_to_uts` uts on gpin.gpin = uts.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_park` parks on gpin.gpin = parks.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_school` schools on gpin.gpin = schools.gpin
+left join `whatthecarp.cville_eda_derived.geopin_to_uva` uva on gpin.gpin = uva.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_roads` roads on gpin.gpin = roads.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_roads_local` roads_local on gpin.gpin = roads_local.gpin
 left join `whatthecarp.cville_eda_derived.geopin_to_nwi` nwi on gpin.gpin = nwi.gpin
