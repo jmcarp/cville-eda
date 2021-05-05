@@ -5,33 +5,34 @@ set -euo pipefail
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.parcel_to_address` as
 select
-    parcelnumb as parcelnumber,
-    address,
-    geo_mat_ma as masteraddressid,
+  parcelnumb as parcelnumber,
+  address,
+  geo_mat_ma as masteraddressid,
 from (
-    select
-        details.*,
-        points.*,
-        row_number() over (partition by points.objectid order by st_distance(points.geography, st_geogfromgeojson(details.geometry))) as rank,
-    from `whatthecarp.cville_eda_raw.parcel_area_details` details
-    cross join `whatthecarp.cville_eda_derived.master_address_points` points
-    where st_dwithin(points.geography, st_geogfromgeojson(details.geometry), 15)
+  select
+    details.*,
+    points.*,
+    row_number() over (partition by points.objectid order by st_distance(points.geography, st_geogfromgeojson(details.geometry))) as rank,
+  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+  cross join `whatthecarp.cville_eda_derived.master_address_points` points
+  where st_dwithin(points.geography, st_geogfromgeojson(details.geometry), 15)
 )
 where rank = 1'
 
 bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.parcel_to_address_geocode` as
 select
-    parcelnumb as parcelnumber,
-    address_id,
+  parcelnumb as parcelnumber,
+  address,
+  address_id,
 from (
-    select
-        details.*,
-        geocoded.*,
-        row_number() over (partition by geocoded.address_id order by st_distance(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry))) as rank,
-    from `whatthecarp.cville_eda_raw.parcel_area_details` details
-    cross join `whatthecarp.cville_eda_raw.master_addresses_geocoded` geocoded
-    where st_dwithin(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry), 15)
+  select
+    details.*,
+    geocoded.*,
+    row_number() over (partition by geocoded.address_id order by st_distance(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry))) as rank,
+  from `whatthecarp.cville_eda_raw.parcel_area_details` details
+  cross join `whatthecarp.cville_eda_raw.master_addresses_geocoded` geocoded
+  where st_dwithin(st_geogpoint(geocoded.longitude, geocoded.latitude), st_geogfromgeojson(details.geometry), 15)
 )
 where rank = 1'
 
