@@ -39,6 +39,12 @@ unzip master-address-points.zip -d master-address-points
 geojsonify master-address-points master-address-points.csv
 bq load --autodetect --replace whatthecarp:cville_eda_raw.master_address_points master-address-points.csv
 
+# https://opendata.charlottesville.org/datasets/planning-neighborhoods-5
+curl -o planning-neighborhoods.zip https://opendata.arcgis.com/datasets/f4efb475a1ca4b919fca4645b72fadd0_320.zip
+unzip planning-neighborhoods.zip -d planning-neighborhoods
+geojsonify planning-neighborhoods planning-neighborhoods.csv
+bq load --autodetect --replace whatthecarp:cville_eda_raw.planning_neighborhoods planning-neighborhoods.csv
+
 # https://opendata.charlottesville.org/datasets/real-estate-base-data
 curl -o real-estate-base.csv https://opendata.arcgis.com/datasets/bc72d0590bf940ff952ab113f10a36a8_8.csv
 bq load --autodetect --replace whatthecarp:cville_eda_raw.real_estate_base real-estate-base.csv
@@ -219,6 +225,21 @@ from (
     row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(school.geometry)) asc) as rank
   from `whatthecarp.cville_eda_derived.geopin` gpin
   cross join `whatthecarp.cville_eda_derived.school_parcels` school
+)
+where rank = 1'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.geopin_to_neighborhood` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    neighborhood.name as neighborhood_name,
+    st_distance(gpin.geometry, st_geogfromgeojson(neighborhood.geometry)) as distance,
+    row_number() over (partition by gpin.gpin order by st_distance(gpin.geometry, st_geogfromgeojson(neighborhood.geometry)) asc)
+  from `whatthecarp.cville_eda_derived.geopin` gpin
+  cross join `whatthecarp.cville_eda_raw.planning_neighborhoods` neighborhood
 )
 where rank = 1'
 

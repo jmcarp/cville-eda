@@ -160,3 +160,26 @@ join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
   on cast(floor(g2b.geoid10 / 1000) as string) =
   concat(format("%02d", acs.state), format("%03d", acs.county), format("%06d", acs.tract), format("%01d", acs.block_group))
 group by designation, acs.year'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.zone_to_flum` as
+with curr as (
+  select
+    geoparceli,
+    zoning
+  from (
+    select
+      geoparceli,
+      zoning,
+      row_number() over (partition by geoparceli order by parcelnumb) as rank,
+    from `whatthecarp.cville_eda_raw.parcel_area_details`
+  )
+  where rank = 1
+)
+select
+  whatthecarp.cville_eda_derived.standardize_zone(curr.zoning) as zoning,
+  flum.desig as designation,
+  neighborhood.neighborhood_name as neighborhood,
+from curr
+join `whatthecarp.cville_eda_raw.draft_flum` flum on curr.geoparceli = flum.geoparceli
+join `whatthecarp.cville_eda_derived.geopin_to_neighborhood` neighborhood on flum.geoparceli = neighborhood.gpin'
