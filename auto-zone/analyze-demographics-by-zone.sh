@@ -116,3 +116,47 @@ join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
   on cast(floor(g2b.geoid10 / 1000) as string) =
   concat(format("%02d", acs.state), format("%03d", acs.county), format("%06d", acs.tract), format("%01d", acs.block_group))
 group by zoning, acs.year'
+
+gsutil cp gs://whatthecarp-public/Draft_FLUM_May2021-web.zip .
+unzip Draft_FLUM_May2021-web.zip -d draft-flum
+geojsonify draft-flum draft-flum.csv
+bq load --autodetect --replace whatthecarp:cville_eda_raw.draft_flum draft-flum.csv
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.sf1_by_flum` as
+select
+  flum.desig as designation,
+  avg(safe_divide(P003003, P003001)) as prop_black,
+  avg(safe_divide(P003005, P003001)) as prop_asian,
+  avg(safe_divide(P003002, P003001)) as prop_white,
+  avg(1 - safe_divide(P003002 + P003003 + P003005, P003001)) as prop_other,
+  count(flum.desig) as addresses,
+from `whatthecarp.cville_eda_derived.parcel_to_address_geocode` p2a
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on p2a.parcelnumber = details.parcelnumb
+join `whatthecarp.cville_eda_raw.draft_flum` flum on details.geoparceli = flum.geoparceli
+join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on flum.geoparceli = g2b.gpin
+join `whatthecarp.cville_eda_raw.sf1` sf1
+  on cast(g2b.geoid10 as string) =
+  concat(format("%02d", sf1.state), format("%03d", sf1.county), format("%06d", sf1.tract), format("%04d", sf1.block))
+group by designation'
+
+bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.acs_by_flum` as
+select
+  year,
+  flum.desig as designation,
+  avg(safe_divide(B02001_003E, B02001_001E)) as prop_black,
+  avg(safe_divide(B02001_005E, B02001_001E)) as prop_asian,
+  avg(safe_divide(B02001_002E, B02001_001E)) as prop_white,
+  avg(1 - safe_divide(B02001_002E + B02001_003E + B02001_005E, B02001_001E)) as prop_other,
+  avg(if(B19013_001E >= 0, B19013_001E, null)) as income,
+  avg(safe_divide(B25032_003E + B25032_014E, B25032_001E)) as prop_sfd,
+  count(flum.desig) as addresses,
+from `whatthecarp.cville_eda_derived.parcel_to_address_geocode` p2a
+join `whatthecarp.cville_eda_raw.parcel_area_details` details on p2a.parcelnumber = details.parcelnumb
+join `whatthecarp.cville_eda_raw.draft_flum` flum on details.geoparceli = flum.geoparceli
+join `whatthecarp.cville_eda_derived.geopin_to_block` g2b on flum.geoparceli = g2b.gpin
+join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
+  on cast(floor(g2b.geoid10 / 1000) as string) =
+  concat(format("%02d", acs.state), format("%03d", acs.county), format("%06d", acs.tract), format("%01d", acs.block_group))
+group by designation, acs.year'
