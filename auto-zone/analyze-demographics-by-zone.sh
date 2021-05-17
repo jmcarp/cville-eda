@@ -180,6 +180,10 @@ select
   whatthecarp.cville_eda_derived.standardize_zone(curr.zoning) as zoning,
   flum.desig as designation,
   neighborhood.neighborhood_name as neighborhood,
+  neighborhood.gpin,
 from curr
 join `whatthecarp.cville_eda_raw.draft_flum` flum on curr.geoparceli = flum.geoparceli
 join `whatthecarp.cville_eda_derived.geopin_to_neighborhood` neighborhood on flum.geoparceli = neighborhood.gpin'
+
+bq extract whatthecarp:cville_eda_derived.zone_to_flum gs://whatthecarp-scratch/zone_to_flum.csv
+gsutil cp gs://whatthecarp-scratch/zone_to_flum.csv .
