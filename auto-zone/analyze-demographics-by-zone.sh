@@ -162,28 +162,63 @@ join `whatthecarp.cville_eda_raw.acs_blockgroup_by_year` acs
 group by designation, acs.year'
 
 bq query --nouse_legacy_sql \
+'create or replace table `whatthecarp.cville_eda_derived.use_codes` as
+select
+  parcelnumber,
+  usecode,
+  "residential" as source,
+from `whatthecarp.cville_eda_raw.real_estate_residential_details`
+union distinct
+select
+  parcelnumber,
+  usecode,
+  "commercial" as source,
+from `whatthecarp.cville_eda_raw.real_estate_commercial_details`'
+
+bq query --nouse_legacy_sql \
 'create or replace table `whatthecarp.cville_eda_derived.zone_to_flum` as
 with curr as (
   select
     geoparceli,
+    parcelnumb,
     zoning
   from (
     select
       geoparceli,
+      parcelnumb,
       zoning,
       row_number() over (partition by geoparceli order by parcelnumb) as rank,
     from `whatthecarp.cville_eda_raw.parcel_area_details`
   )
   where rank = 1
+), codes_by_gpin as (
+  select
+    array_agg(distinct usecode order by usecode) as use_codes,
+    details.geoparceli as gpin
+  from `whatthecarp.cville_eda_derived.use_codes` use_codes
+  join whatthecarp.cville_eda_raw.parcel_area_details details on use_codes.parcelnumber = details.parcelnumb
+  group by details.geoparceli
+), assessments as (
+  select
+    details.geoparceli as gpin,
+    sum(assessments.totalvalue) as total_value,
+  from `whatthecarp.cville_eda_raw.real_estate_assessments` assessments
+  join `whatthecarp.cville_eda_raw.parcel_area_details` details on assessments.parcelnumber = details.parcelnumb
+  where assessments.taxyear = 2021
+  group by details.geoparceli
 )
 select
   whatthecarp.cville_eda_derived.standardize_zone(curr.zoning) as zoning,
   flum.desig as designation,
-  neighborhood.neighborhood_name as neighborhood,
   neighborhood.gpin,
+  neighborhood.neighborhood_name as neighborhood,
+  array_to_string(codes_by_gpin.use_codes, ", ") as use_codes,
+  assessments.total_value,
 from curr
 join `whatthecarp.cville_eda_raw.draft_flum` flum on curr.geoparceli = flum.geoparceli
-join `whatthecarp.cville_eda_derived.geopin_to_neighborhood` neighborhood on flum.geoparceli = neighborhood.gpin'
+join `whatthecarp.cville_eda_derived.geopin_to_neighborhood` neighborhood on flum.geoparceli = neighborhood.gpin
+join codes_by_gpin on curr.geoparceli = codes_by_gpin.gpin
+join assessments on curr.geoparceli = assessments.gpin'
 
 bq extract whatthecarp:cville_eda_derived.zone_to_flum gs://whatthecarp-scratch/zone_to_flum.csv
 gsutil cp gs://whatthecarp-scratch/zone_to_flum.csv .
