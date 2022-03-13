@@ -3,18 +3,25 @@
 set -euo pipefail
 
 PROJECT_ID=cvilledata
+DATASET_ID=cville_open_data
 DATASET_DERIVED_ID=cville_open_data_derived
+GROUP_ID=b793cfbc066d4fdc9ad44fe2885dcf67
+MISC_DATASET_IDS=(
+  "f4efb475a1ca4b919fca4645b72fadd0_76"  # Sidewalks
+  "5ea50546852444a890dc55c9d68104f8_29"  # Road Centerlines
+  "fa6e17734a784cadbe40a3d9cf674766_30"  # Road Area
+)
 
 source ./utils.sh
 
 bq mk --force "${PROJECT_ID}:${DATASET_ID}"
 bq mk --force "${PROJECT_ID}:${DATASET_DERIVED_ID}"
 
-arcgis-hub \
-  fetch-datasets \
-  --group-id b793cfbc066d4fdc9ad44fe2885dcf67 \
-  --tag 'property & land' \
-  --path cville
+arcgis-hub fetch-datasets --group-id "${GROUP_ID}" --tag 'property & land' --path cville
+
+for dataset_id in "${MISC_DATASET_IDS[@]}"; do
+  arcgis-hub fetch-datasets-by-id --dataset-id "${dataset_id}" --path cville
+done
 
 for dataset in cville/*.zip; do
   label=$(echo "${dataset}" | \
