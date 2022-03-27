@@ -11,11 +11,11 @@ DATASET_ID=fema
 
 source ./utils.sh
 
-# bq mk --force "${PROJECT_ID}:${DATASET_ID}"
+bq mk --force "${PROJECT_ID}:${DATASET_ID}"
 
-# # Download link from https://msc.fema.gov/portal/advanceSearch under "NFHL Data-County"
-# curl -L -o scratch/NFHL_51003C.zip 'https://hazards.fema.gov/nfhlv2/output/County/51003C_20211217.zip'
-# unzip -d scratch/NFHL_51003C scratch/NFHL_51003C.zip
+# Download link from https://msc.fema.gov/portal/advanceSearch under "NFHL Data-County"
+curl -L -o scratch/NFHL_51003C.zip 'https://hazards.fema.gov/nfhlv2/output/County/51003C_20211217.zip'
+unzip -d scratch/NFHL_51003C scratch/NFHL_51003C.zip
 
 # Extract full SFHA table
 ogr2ogr \
