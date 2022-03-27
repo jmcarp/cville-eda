@@ -10,6 +10,7 @@ MISC_DATASET_IDS=(
   "f4efb475a1ca4b919fca4645b72fadd0_76"  # Sidewalks
   "5ea50546852444a890dc55c9d68104f8_29"  # Road Centerlines
   "fa6e17734a784cadbe40a3d9cf674766_30"  # Road Area
+  "f4efb475a1ca4b919fca4645b72fadd0_33"  # Bodies of Water
 )
 
 source ./utils.sh
