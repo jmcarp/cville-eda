@@ -39,4 +39,7 @@ for dataset in cville/*.zip; do
   bq load --autodetect --replace --allow_quoted_newlines "${PROJECT_ID}:${DATASET_ID}.${label}" "cville/${label}.csv"
 done
 
+./get-arcgis-raster.py --layer CriticalSlopeLotRegulation --outfile cville/critical-slopes.csv
+bq load --autodetect --replace "${PROJECT_ID}:${DATASET_ID}.critical_slope_log_regulation" cville/critical-slopes.csv
+
 bq query --nouse_legacy_sql < cville-open-data-derived.sql
