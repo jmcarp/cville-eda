@@ -2,16 +2,19 @@
 
 import argparse
 import io
+import json
 
 import geopandas as gpd
+import pandas as pd
 import rasterio
 import rasterio.features
 import requests
+import shapely.geometry as sg
 
 BASE_URL = "https://gisweb.charlottesville.org/arcgis/rest/services"
 
 
-def layer_to_frame(layer_name, tile_bins=8, tile_resolution=2400):
+def layer_to_frame(layer_name, tile_bins=4, tile_resolution=3200):
     layer = get_layer(layer_name)
     shapes = []
     for tile in get_tiles(layer["extent"], tile_bins):
@@ -79,9 +82,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--layer", required=True)
     parser.add_argument("--outfile", required=True)
-    parser.add_argument("--tile-bins", type=int, default=8)
-    parser.add_argument("--tile-resolution", type=int, default=2400)
+    parser.add_argument("--tile-bins", type=int, default=4)
+    parser.add_argument("--tile-resolution", type=int, default=3200)
     args = parser.parse_args()
 
     df = layer_to_frame(args.layer, tile_bins=args.tile_bins, tile_resolution=args.tile_resolution)
-    df.to_csv(args.outfile, index=False)
+    df = df.to_crs("WGS84")
+    out_df = pd.DataFrame({
+        "value": df.value,
+        "geometry": df.geometry.apply(lambda shape: json.dumps(sg.mapping(shape))),
+    })
+    out_df.to_csv(args.outfile, index=False)
