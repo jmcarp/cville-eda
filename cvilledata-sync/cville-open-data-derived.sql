@@ -41,7 +41,7 @@ where rank = 1
 ;
 
 -- Map geopin to 2010 census tract
-create or replace table `cvilledata.cville_open_data_derived.geopin_to_tract` as
+create or replace table `cvilledata.cville_open_data_derived.geopin_to_tract_2010` as
 select
   * except (rank)
 from (
@@ -59,7 +59,7 @@ where rank = 1
 ;
 
 -- Map geopin to 2010 census block
-create or replace table `cvilledata.cville_open_data_derived.geopin_to_block` as
+create or replace table `cvilledata.cville_open_data_derived.geopin_to_block_2010` as
 select
   * except (rank)
 from (
@@ -71,10 +71,47 @@ from (
     blocks.geoid10,
     row_number() over (partition by gpin.gpin order by st_area(st_intersection(gpin.geometry, st_geogfromgeojson(blocks.geometry))) desc) as rank
   from `cvilledata.cville_open_data_derived.geopin` gpin
-  join `cvilledata.cville_open_data_derived.geopin_to_tract` tracts on gpin.gpin = tracts.gpin
+  join `cvilledata.cville_open_data_derived.geopin_to_tract_2010` tracts on gpin.gpin = tracts.gpin
   join `cvilledata.census.census_blocks_2010_51` blocks on tracts.tractce10 = blocks.tractce10
   where blocks.countyfp10 = 540
+)
+where rank = 1
+;
 
+-- Map geopin to 2020 census tract
+create or replace table `cvilledata.cville_open_data_derived.geopin_to_tract_2020` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    tracts.countyfp,
+    tracts.tractce,
+    tracts.geoid,
+    row_number() over (partition by gpin.gpin order by st_area(st_intersection(gpin.geometry, st_geogfromgeojson(tracts.geometry))) desc) as rank
+  from `cvilledata.cville_open_data_derived.geopin` gpin
+  cross join `cvilledata.census.census_tracts_2020_51` tracts
+  where tracts.countyfp = 540
+)
+where rank = 1
+;
+
+-- Map geopin to 2020 census block
+create or replace table `cvilledata.cville_open_data_derived.geopin_to_block_2020` as
+select
+  * except (rank)
+from (
+  select
+    gpin.gpin,
+    blocks.countyfp20,
+    blocks.tractce20,
+    blocks.blockce20,
+    blocks.geoid20,
+    row_number() over (partition by gpin.gpin order by st_area(st_intersection(gpin.geometry, st_geogfromgeojson(blocks.geometry))) desc) as rank
+  from `cvilledata.cville_open_data_derived.geopin` gpin
+  join `cvilledata.cville_open_data_derived.geopin_to_tract_2020` tracts on gpin.gpin = tracts.gpin
+  join `cvilledata.census.census_blocks_2020_51` blocks on tracts.tractce = blocks.tractce20
+  where blocks.countyfp20 = 540
 )
 where rank = 1
 ;
@@ -95,4 +132,14 @@ select
     515400008004
   ) as is_sensitive_area,
 from `cvilledata.cville_open_data_derived.geopin_to_block`
+;
+
+-- Map structure to geopin
+create or replace table `cvilledata.cville_open_data_derived.structure_to_geopin` as
+select
+  structures.bin,
+  geopin.gpin,
+from `cvilledata.cville_open_data.existing_structure_area` structures
+join `cvilledata.cville_open_data_derived.geopin` geopin on
+  st_intersects(st_geogfromgeojson(structures.geometry, make_valid => true), geopin.geometry)
 ;
