@@ -1,0 +1,7 @@
+# Downloaded data
+permits.jsonl
+permits_with_comments.jsonl
+parcels.json
+
+# Generated files
+site/data.json

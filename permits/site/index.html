@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Charlottesville Development Projects</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    [x-cloak] {
+      display: none !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 1.5rem;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+    .filter-group input[type="number"] {
+      width: 80px;
+    }
+    .filter-group input[type="text"] {
+      width: 150px;
+    }
+    .multi-select {
+      position: relative;
+    }
+    .multi-select-button {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      background: white;
+      cursor: pointer;
+      min-width: 120px;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .multi-select-button:hover {
+      border-color: #bbb;
+    }
+    .multi-select-button .arrow {
+      margin-left: 8px;
+      font-size: 0.7rem;
+    }
+    .multi-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 2px;
+    }
+    .multi-select-option {
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .multi-select-option:hover {
+      background: #f5f5f5;
+    }
+    .multi-select-option input {
+      margin: 0;
+    }
+    .table-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f9f9f9;
+      font-weight: 600;
+      color: #555;
+      position: sticky;
+      top: 0;
+    }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover {
+      background: #f0f0f0;
+    }
+    th .sort-indicator {
+      margin-left: 4px;
+      opacity: 0.3;
+    }
+    th.sorted .sort-indicator {
+      opacity: 1;
+    }
+    tr.data-row {
+      cursor: pointer;
+    }
+    tr.data-row:hover {
+      background: #f8f8f8;
+    }
+    tr.expanded {
+      background: #f0f7ff;
+    }
+    tr.expanded:hover {
+      background: #e8f0fa;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-active { background: #cce5ff; color: #004085; }
+    .status-review { background: #fff3cd; color: #856404; }
+    .status-closed { background: #e2e3e5; color: #383d41; }
+    .permit-tree {
+      padding: 16px 20px 16px 48px;
+      background: #fafafa;
+    }
+    .permit-tree ul {
+      margin: 0;
+      padding-left: 20px;
+      list-style: none;
+    }
+    .permit-tree > ul {
+      padding-left: 0;
+    }
+    .permit-tree li {
+      position: relative;
+      padding: 4px 0;
+    }
+    .permit-tree li::before {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 0;
+      bottom: 50%;
+      border-left: 1px solid #ccc;
+      border-bottom: 1px solid #ccc;
+      width: 12px;
+    }
+    .permit-tree > ul > li::before {
+      display: none;
+    }
+    .permit-tree li::after {
+      content: "";
+      position: absolute;
+      left: -16px;
+      top: 50%;
+      bottom: 0;
+      border-left: 1px solid #ccc;
+    }
+    .permit-tree li:last-child::after {
+      display: none;
+    }
+    .permit-node {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 8px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    a.permit-id {
+      font-weight: 600;
+      color: #0066cc;
+      text-decoration: none;
+    }
+    a.permit-id:hover {
+      text-decoration: underline;
+    }
+    .permit-type {
+      color: #666;
+    }
+    .permit-status {
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      border-radius: 8px;
+    }
+    .permit-date {
+      color: #888;
+      font-size: 0.75rem;
+    }
+    .summary {
+      padding: 12px 16px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #eee;
+      font-size: 0.875rem;
+      color: #666;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: #cc0000;
+    }
+    .units {
+      font-weight: 600;
+    }
+    @media (max-width: 768px) {
+      .filters {
+        flex-direction: column;
+      }
+      .filter-group input[type="text"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div x-data="projectTable()" x-init="loadData()">
+    <h1>Charlottesville Development Projects</h1>
+
+    <template x-if="loading">
+      <div class="loading">Loading projects...</div>
+    </template>
+
+    <template x-if="error">
+      <div class="error" x-text="error"></div>
+    </template>
+
+    <template x-if="!loading && !error">
+      <div>
+        <div class="filters">
+          <div class="filter-group">
+            <label>Address</label>
+            <input type="text" x-model="filters.address" @input.debounce.300ms="updateUrl()" placeholder="Search...">
+          </div>
+          <div class="filter-group">
+            <label>Min Units</label>
+            <input type="number" x-model.number="filters.minUnits" @input.debounce.300ms="updateUrl()" placeholder="0">
+          </div>
+          <div class="filter-group">
+            <label>Max Units</label>
+            <input type="number" x-model.number="filters.maxUnits" @input.debounce.300ms="updateUrl()" placeholder="Any">
+          </div>
+          <div class="filter-group">
+            <label>Type</label>
+            <div class="multi-select" @click.outside="dropdowns.type = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.type = !dropdowns.type">
+                <span x-text="filters.types.length ? filters.types.length + ' selected' : 'All'"></span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.type" x-cloak>
+                <template x-for="t in uniqueTypes" :key="t">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="t" :checked="filters.types.includes(t)" @change="toggleFilter('types', t)">
+                    <span x-text="t"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <div class="multi-select" @click.outside="dropdowns.status = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.status = !dropdowns.status">
+                <span x-text="filters.statuses.length ? filters.statuses.length + ' selected' : 'All'"></span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.status" x-cloak>
+                <template x-for="s in uniqueStatuses" :key="s">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="s" :checked="filters.statuses.includes(s)" @change="toggleFilter('statuses', s)">
+                    <span x-text="s"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Zone</label>
+            <div class="multi-select" @click.outside="dropdowns.zone = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.zone = !dropdowns.zone">
+                <span x-text="filters.zones.length ? filters.zones.length + ' selected' : 'All'"></span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.zone" x-cloak>
+                <template x-for="z in uniqueZones" :key="z">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="z" :checked="filters.zones.includes(z)" @change="toggleFilter('zones', z)">
+                    <span x-text="z"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Code</label>
+            <div class="multi-select" @click.outside="dropdowns.codeYear = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.codeYear = !dropdowns.codeYear">
+                <span x-text="filters.codeYears.length ? filters.codeYears.length + ' selected' : 'All'"></span>
+                <span class="arrow">▼</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.codeYear" x-cloak>
+                <template x-for="c in uniqueCodeYears" :key="c">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="c" :checked="filters.codeYears.includes(c)" @change="toggleFilter('codeYears', c)">
+                    <span x-text="c"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary">
+          Showing <strong x-text="filteredProjects.length"></strong> of <strong x-text="projects.length"></strong> projects
+          (<strong x-text="totalUnits"></strong> total units)
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th class="sortable" :class="{ sorted: sortBy === 'units' }" @click="sort('units')">
+                  Units <span class="sort-indicator" x-text="sortBy === 'units' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'type' }" @click="sort('type')">
+                  Type <span class="sort-indicator" x-text="sortBy === 'type' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'zone' }" @click="sort('zone')">
+                  Zone <span class="sort-indicator" x-text="sortBy === 'zone' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'code_year' }" @click="sort('code_year')">
+                  Code <span class="sort-indicator" x-text="sortBy === 'code_year' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'status' }" @click="sort('status')">
+                  Status <span class="sort-indicator" x-text="sortBy === 'status' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th>Developer</th>
+                <th class="sortable" :class="{ sorted: sortBy === 'submitted' }" @click="sort('submitted')">
+                  Submitted <span class="sort-indicator" x-text="sortBy === 'submitted' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'updated' }" @click="sort('updated')">
+                  Updated <span class="sort-indicator" x-text="sortBy === 'updated' ? (sortDir === 'asc' ? '▲' : '▼') : '▼'"></span>
+                </th>
+              </tr>
+            </thead>
+            <template x-for="project in sortedProjects" :key="project.permit_id">
+              <tbody>
+                <tr class="data-row" :class="{ expanded: expanded.has(project.permit_id) }" @click="toggleExpand(project.permit_id)">
+                  <td x-text="project.addresses[0] || '—'"></td>
+                  <td class="units" x-text="project.units ?? '?'"></td>
+                  <td x-text="project.use_type"></td>
+                  <td x-text="project.zone"></td>
+                  <td x-text="project.code_year"></td>
+                  <td><span class="status" :class="statusClass(project.status)" x-text="project.status"></span></td>
+                  <td x-text="project.developer || ''"></td>
+                  <td x-text="project.initial_submit || '—'"></td>
+                  <td x-text="project.last_updated || '—'"></td>
+                </tr>
+                <tr x-show="expanded.has(project.permit_id)">
+                  <td colspan="9" class="permit-tree">
+                    <template x-if="project.permit_tree && project.permit_tree.length > 0">
+                      <ul>
+                        <template x-for="node in project.permit_tree" :key="node.permit_id">
+                          <li x-html="renderTreeNode(node)"></li>
+                        </template>
+                      </ul>
+                    </template>
+                    <template x-if="!project.permit_tree || project.permit_tree.length === 0">
+                      <em>No permit tree available</em>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </template>
+          </table>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <script>
+    function projectTable() {
+      return {
+        projects: [],
+        loading: true,
+        error: null,
+        sortBy: 'units',
+        sortDir: 'desc',
+        filters: {
+          address: '',
+          minUnits: null,
+          maxUnits: null,
+          types: [],
+          statuses: [],
+          zones: [],
+          codeYears: []
+        },
+        dropdowns: {
+          type: false,
+          status: false,
+          zone: false,
+          codeYear: false
+        },
+        expanded: new Set(),
+
+        async loadData() {
+          try {
+            const response = await fetch('data.json');
+            if (!response.ok) throw new Error('Failed to load data.json');
+            const data = await response.json();
+            this.projects = data.projects;
+            this.loading = false;
+            this.loadFromUrl();
+          } catch (e) {
+            this.error = 'Failed to load data. Make sure to run build_site.py first.';
+            this.loading = false;
+          }
+        },
+
+        loadFromUrl() {
+          const params = new URLSearchParams(window.location.search);
+          if (params.has('sort')) this.sortBy = params.get('sort');
+          if (params.has('dir')) this.sortDir = params.get('dir');
+          if (params.has('address')) this.filters.address = params.get('address');
+          if (params.has('minUnits')) this.filters.minUnits = parseInt(params.get('minUnits')) || null;
+          if (params.has('maxUnits')) this.filters.maxUnits = parseInt(params.get('maxUnits')) || null;
+          if (params.has('types')) this.filters.types = params.get('types').split(',').filter(Boolean);
+          if (params.has('statuses')) this.filters.statuses = params.get('statuses').split(',').filter(Boolean);
+          if (params.has('zones')) this.filters.zones = params.get('zones').split(',').filter(Boolean);
+          if (params.has('codes')) this.filters.codeYears = params.get('codes').split(',').filter(Boolean);
+        },
+
+        updateUrl() {
+          const params = new URLSearchParams();
+          if (this.sortBy !== 'units') params.set('sort', this.sortBy);
+          if (this.sortDir !== 'desc') params.set('dir', this.sortDir);
+          if (this.filters.address) params.set('address', this.filters.address);
+          if (this.filters.minUnits != null && this.filters.minUnits !== '') params.set('minUnits', this.filters.minUnits);
+          if (this.filters.maxUnits != null && this.filters.maxUnits !== '') params.set('maxUnits', this.filters.maxUnits);
+          if (this.filters.types.length) params.set('types', this.filters.types.join(','));
+          if (this.filters.statuses.length) params.set('statuses', this.filters.statuses.join(','));
+          if (this.filters.zones.length) params.set('zones', this.filters.zones.join(','));
+          if (this.filters.codeYears.length) params.set('codes', this.filters.codeYears.join(','));
+
+          const url = params.toString() ? `?${params.toString()}` : window.location.pathname;
+          window.history.replaceState({}, '', url);
+        },
+
+        get uniqueTypes() {
+          return [...new Set(this.projects.map(p => p.use_type))].filter(t => t && t !== '?').sort();
+        },
+
+        get uniqueStatuses() {
+          return [...new Set(this.projects.map(p => p.status))].filter(s => s).sort();
+        },
+
+        get uniqueZones() {
+          return [...new Set(this.projects.map(p => p.zone))].filter(z => z && z !== '?').sort();
+        },
+
+        get uniqueCodeYears() {
+          return [...new Set(this.projects.map(p => p.code_year))].filter(c => c && c !== '?').sort();
+        },
+
+        get filteredProjects() {
+          return this.projects.filter(p => {
+            if (this.filters.address) {
+              const search = this.filters.address.toLowerCase();
+              const hasMatch = p.addresses.some(a => a.toLowerCase().includes(search));
+              if (!hasMatch) return false;
+            }
+            if (this.filters.minUnits != null && this.filters.minUnits !== '') {
+              if (p.units == null || p.units < this.filters.minUnits) return false;
+            }
+            if (this.filters.maxUnits != null && this.filters.maxUnits !== '') {
+              if (p.units == null || p.units > this.filters.maxUnits) return false;
+            }
+            if (this.filters.types.length > 0 && !this.filters.types.includes(p.use_type)) return false;
+            if (this.filters.statuses.length > 0 && !this.filters.statuses.includes(p.status)) return false;
+            if (this.filters.zones.length > 0 && !this.filters.zones.includes(p.zone)) return false;
+            if (this.filters.codeYears.length > 0 && !this.filters.codeYears.includes(p.code_year)) return false;
+            return true;
+          });
+        },
+
+        get sortedProjects() {
+          const sorted = [...this.filteredProjects];
+          sorted.sort((a, b) => {
+            let aVal, bVal;
+            switch (this.sortBy) {
+              case 'units':
+                aVal = a.units ?? -1;
+                bVal = b.units ?? -1;
+                break;
+              case 'type':
+                aVal = a.use_type;
+                bVal = b.use_type;
+                break;
+              case 'zone':
+                aVal = a.zone || '';
+                bVal = b.zone || '';
+                break;
+              case 'code_year':
+                aVal = a.code_year || '';
+                bVal = b.code_year || '';
+                break;
+              case 'status':
+                aVal = a.status;
+                bVal = b.status;
+                break;
+              case 'submitted':
+                aVal = a.initial_submit || '';
+                bVal = b.initial_submit || '';
+                break;
+              case 'updated':
+                aVal = a.last_updated || '';
+                bVal = b.last_updated || '';
+                break;
+              default:
+                return 0;
+            }
+            if (aVal < bVal) return this.sortDir === 'asc' ? -1 : 1;
+            if (aVal > bVal) return this.sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
+          return sorted;
+        },
+
+        get totalUnits() {
+          return this.filteredProjects.reduce((sum, p) => sum + (p.units || 0), 0);
+        },
+
+        sort(column) {
+          if (this.sortBy === column) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortBy = column;
+            this.sortDir = 'desc';
+          }
+          this.updateUrl();
+        },
+
+        toggleFilter(filterName, value) {
+          const idx = this.filters[filterName].indexOf(value);
+          if (idx === -1) {
+            this.filters[filterName].push(value);
+          } else {
+            this.filters[filterName].splice(idx, 1);
+          }
+          this.updateUrl();
+        },
+
+        toggleExpand(permitId) {
+          if (this.expanded.has(permitId)) {
+            this.expanded.delete(permitId);
+          } else {
+            this.expanded.add(permitId);
+          }
+          // Force reactivity
+          this.expanded = new Set(this.expanded);
+        },
+
+        statusClass(status) {
+          const s = status.toUpperCase();
+          if (s.includes('APPROVED') || s === 'APPROVEDCL') return 'status-approved';
+          if (s === 'UNDERCONST' || s === 'ACTIVE' || s === 'ISSUED') return 'status-active';
+          if (s === 'REVIEW' || s === 'PLANCOMM' || s === 'RESUBMIT' || s === 'COMMENTS' || s === 'APPLIED') return 'status-review';
+          return 'status-closed';
+        },
+
+        renderTreeNode(node) {
+          const statusClass = this.statusClass(node.status);
+          let html = `<div class="permit-node">
+            <a href="${this.escapeHtml(node.url)}" target="_blank" rel="noopener" class="permit-id" onclick="event.stopPropagation()">${this.escapeHtml(node.permit_id)}</a>
+            <span class="permit-type">${this.escapeHtml(node.permit_type)}/${this.escapeHtml(node.sub_type)}</span>
+            <span class="permit-status ${statusClass}">${this.escapeHtml(node.status)}</span>
+            ${node.date ? `<span class="permit-date">${this.escapeHtml(node.date)}</span>` : ''}
+          </div>`;
+
+          if (node.children && node.children.length > 0) {
+            html += '<ul>';
+            for (const child of node.children) {
+              html += `<li>${this.renderTreeNode(child)}</li>`;
+            }
+            html += '</ul>';
+          }
+
+          return html;
+        },
+
+        escapeHtml(str) {
+          if (!str) return '';
+          return str.replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+        }
+      };
+    }
+  </script>
+</body>
+</html>
