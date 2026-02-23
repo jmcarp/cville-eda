@@ -253,6 +253,7 @@ def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
                 "application_date": (
                     p.application_date.isoformat() if p.application_date else None
                 ),
+                "description": p.description,
             }
         )
 

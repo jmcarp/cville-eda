@@ -89,13 +89,150 @@
       border: 1px solid rgba(0,0,0,0.2);
       flex-shrink: 0;
     }
+
+    /* Filter panel */
+    .filter-panel {
+      position: absolute;
+      top: 62px;
+      right: 10px;
+      z-index: 1000;
+    }
+    .filter-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      background: white;
+      border: none;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-family: inherit;
+      color: #333;
+    }
+    .filter-toggle:hover {
+      background: #f5f5f5;
+    }
+    .filter-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      background: #0066cc;
+      color: white;
+      border-radius: 9px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .filter-body {
+      margin-top: 6px;
+      background: white;
+      border-radius: 6px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      padding: 12px;
+      width: 220px;
+    }
+    .filter-group {
+      margin-bottom: 10px;
+    }
+    .filter-group:last-child {
+      margin-bottom: 0;
+    }
+    .filter-group label.filter-label {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .multi-select {
+      position: relative;
+    }
+    .multi-select-button {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      background: white;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: inherit;
+      color: #333;
+    }
+    .multi-select-button:hover {
+      border-color: #bbb;
+    }
+    .multi-select-button .arrow {
+      margin-left: 8px;
+      font-size: 0.7rem;
+    }
+    .multi-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 110;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 2px;
+    }
+    .multi-select-option {
+      padding: 6px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+    .multi-select-option:hover {
+      background: #f5f5f5;
+    }
+    .multi-select-option input {
+      margin: 0;
+    }
+    .reset-btn {
+      display: block;
+      width: 100%;
+      padding: 6px;
+      margin-top: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-family: inherit;
+      color: #666;
+    }
+    .reset-btn:hover {
+      background: #f5f5f5;
+      color: #333;
+    }
   </style>
 </head>
 <body>
   <div x-data="mapApp()" x-init="init()">
     <div class="navbar">
       <h1>Albemarle County Development Projects</h1>
-      <span class="stats" x-cloak x-show="featureCount > 0" x-text="featureCount + ' parcels mapped'"></span>
+      <span class="stats" x-cloak x-show="totalFeatureCount > 0">
+        <template x-if="activeFilterCount > 0">
+          <span x-text="visibleFeatureCount.toLocaleString() + ' of ' + totalFeatureCount.toLocaleString() + ' parcels shown'"></span>
+        </template>
+        <template x-if="activeFilterCount === 0">
+          <span x-text="totalFeatureCount.toLocaleString() + ' parcels mapped'"></span>
+        </template>
+      </span>
       <a href="index.html">Table View &rarr;</a>
     </div>
 
@@ -108,6 +245,84 @@
     </template>
 
     <div id="map"></div>
+
+    <!-- Filter panel (positioned over map, not a Leaflet control) -->
+    <div class="filter-panel"
+         x-cloak x-show="totalFeatureCount > 0"
+         @click.stop @dblclick.stop @mousedown.stop @wheel.stop>
+
+      <button class="filter-toggle" @click="filterOpen = !filterOpen">
+        Filters
+        <template x-if="activeFilterCount > 0">
+          <span class="filter-badge" x-text="activeFilterCount"></span>
+        </template>
+      </button>
+
+      <div class="filter-body" x-show="filterOpen" x-cloak>
+        <!-- Year -->
+        <div class="filter-group">
+          <label class="filter-label">Year</label>
+          <div class="multi-select" @click.outside="dropdowns.year = false">
+            <button type="button" class="multi-select-button" @click="dropdowns.year = !dropdowns.year">
+              <span x-text="filters.years.length ? filters.years.length + ' selected' : 'All'"></span>
+              <span class="arrow">&#x25BC;</span>
+            </button>
+            <div class="multi-select-dropdown" x-show="dropdowns.year" x-cloak>
+              <template x-for="y in uniqueYears" :key="y">
+                <label class="multi-select-option">
+                  <input type="checkbox" :value="y" :checked="filters.years.includes(y)" @change="toggleFilter('years', y)">
+                  <span x-text="y"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Type -->
+        <div class="filter-group">
+          <label class="filter-label">Type</label>
+          <div class="multi-select" @click.outside="dropdowns.type = false">
+            <button type="button" class="multi-select-button" @click="dropdowns.type = !dropdowns.type">
+              <span x-text="filters.types.length ? filters.types.length + ' selected' : 'All'"></span>
+              <span class="arrow">&#x25BC;</span>
+            </button>
+            <div class="multi-select-dropdown" x-show="dropdowns.type" x-cloak>
+              <template x-for="t in uniqueTypes" :key="t">
+                <label class="multi-select-option">
+                  <input type="checkbox" :value="t" :checked="filters.types.includes(t)" @change="toggleFilter('types', t)">
+                  <span x-text="t"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status -->
+        <div class="filter-group">
+          <label class="filter-label">Status</label>
+          <div class="multi-select" @click.outside="dropdowns.status = false">
+            <button type="button" class="multi-select-button" @click="dropdowns.status = !dropdowns.status">
+              <span x-text="filters.statuses.length ? filters.statuses.length + ' selected' : 'All'"></span>
+              <span class="arrow">&#x25BC;</span>
+            </button>
+            <div class="multi-select-dropdown" x-show="dropdowns.status" x-cloak>
+              <template x-for="s in uniqueStatuses" :key="s">
+                <label class="multi-select-option">
+                  <input type="checkbox" :value="s" :checked="filters.statuses.includes(s)" @change="toggleFilter('statuses', s)">
+                  <span x-text="s"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+        </div>
+
+        <button class="reset-btn"
+                x-show="activeFilterCount > 0"
+                @click="resetFilters()">
+          Reset filters
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -115,8 +330,24 @@
       return {
         loading: true,
         error: null,
-        featureCount: 0,
+        totalFeatureCount: 0,
+        visibleFeatureCount: 0,
         map: null,
+        geojsonData: null,
+        geojsonLayer: null,
+
+        filterOpen: false,
+        filters: { years: [], types: [], statuses: [] },
+        dropdowns: { year: false, type: false, status: false },
+
+        // Distinct values extracted from data
+        uniqueYears: [],
+        uniqueTypes: [],
+        uniqueStatuses: [],
+
+        get activeFilterCount() {
+          return this.filters.years.length + this.filters.types.length + this.filters.statuses.length;
+        },
 
         statusColor(status) {
           if (!status) return '#6c757d';
@@ -165,51 +396,152 @@
           try {
             const response = await fetch('parcels.geojson');
             if (!response.ok) throw new Error('Failed to load parcels.geojson. Run: make fetch-parcels && make build');
-            const geojson = await response.json();
-            this.featureCount = geojson.features.length;
+            this.geojsonData = await response.json();
+            this.totalFeatureCount = this.geojsonData.features.length;
 
-            const self = this;
-            L.geoJSON(geojson, {
-              style(feature) {
-                const color = self.statusColor(feature.properties.status);
-                return {
-                  color: color,
-                  fillColor: color,
-                  fillOpacity: 0.5,
-                  weight: 2,
-                };
-              },
-              onEachFeature(feature, layer) {
-                const props = feature.properties;
-                const projects = props.projects || [];
-
-                const html = projects.map((p, i) => {
-                  const addr = (p.addresses && p.addresses[0]) || '';
-                  const name = p.project_name || addr || 'Unknown';
-                  const showAddr = addr && addr !== name;
-                  const units = p.units != null ? p.units + ' units' : '';
-                  const searchTerm = addr || props.pin || '';
-                  const searchParam = encodeURIComponent(searchTerm);
-                  const sep = i > 0 ? '<hr style="margin:8px 0;border:0;border-top:1px solid #ddd">' : '';
-
-                  return `${sep}<div>
-                    <strong>${self.esc(name)}</strong><br>
-                    ${showAddr ? self.esc(addr) + '<br>' : ''}
-                    ${units ? units + '<br>' : ''}
-                    <em>${self.esc(p.status)}</em> &middot; ${self.esc(p.plan_type)}<br>
-                    ${searchTerm ? `<a href="index.html?search=${searchParam}" style="font-size:0.85em">View in table &rarr;</a>` : ''}
-                  </div>`;
-                }).join('');
-
-                layer.bindPopup(`<div style="min-width:180px">${html}</div>`);
-              }
-            }).addTo(self.map);
+            this.extractFilterValues();
+            this.loadFromUrl();
+            this.renderLayer();
 
             this.loading = false;
           } catch (e) {
             this.error = e.message;
             this.loading = false;
           }
+        },
+
+        extractFilterValues() {
+          const years = new Set();
+          const types = new Set();
+          const statuses = new Set();
+
+          for (const feature of this.geojsonData.features) {
+            for (const p of feature.properties.projects || []) {
+              if (p.application_date) {
+                const year = p.application_date.substring(0, 4);
+                if (year >= '2000') years.add(year);
+              }
+              if (p.plan_type) types.add(p.plan_type);
+              if (p.status) statuses.add(p.status);
+            }
+          }
+
+          this.uniqueYears = [...years].sort().reverse();
+          this.uniqueTypes = [...types].sort();
+          this.uniqueStatuses = [...statuses].sort();
+        },
+
+        projectMatchesFilters(p) {
+          if (this.filters.years.length > 0) {
+            const year = (p.application_date || '').substring(0, 4);
+            if (!this.filters.years.includes(year)) return false;
+          }
+          if (this.filters.types.length > 0) {
+            if (!this.filters.types.includes(p.plan_type)) return false;
+          }
+          if (this.filters.statuses.length > 0) {
+            if (!this.filters.statuses.includes(p.status)) return false;
+          }
+          return true;
+        },
+
+        matchingProjects(feature) {
+          const projects = feature.properties.projects || [];
+          if (this.activeFilterCount === 0) return projects;
+          return projects.filter(p => this.projectMatchesFilters(p));
+        },
+
+        renderLayer() {
+          if (this.geojsonLayer) {
+            this.map.removeLayer(this.geojsonLayer);
+          }
+
+          const self = this;
+          let visible = 0;
+
+          this.geojsonLayer = L.geoJSON(this.geojsonData, {
+            filter(feature) {
+              const matches = self.matchingProjects(feature);
+              if (matches.length > 0) {
+                visible++;
+                return true;
+              }
+              return false;
+            },
+            style(feature) {
+              const color = self.statusColor(feature.properties.status);
+              return {
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.5,
+                weight: 2,
+              };
+            },
+            onEachFeature(feature, layer) {
+              const props = feature.properties;
+              const projects = self.matchingProjects(feature);
+
+              const html = projects.map((p, i) => {
+                const addr = (p.addresses && p.addresses[0]) || '';
+                const name = p.project_name || addr || 'Unknown';
+                const showAddr = addr && addr !== name;
+                const units = p.units != null ? p.units + ' units' : '';
+                const searchTerm = addr || props.pin || '';
+                const searchParam = encodeURIComponent(searchTerm);
+                const sep = i > 0 ? '<hr style="margin:8px 0;border:0;border-top:1px solid #ddd">' : '';
+
+                return `${sep}<div>
+                  <strong>${self.esc(name)}</strong><br>
+                  ${showAddr ? self.esc(addr) + '<br>' : ''}
+                  ${units ? units + '<br>' : ''}
+                  <em>${self.esc(p.status)}</em> &middot; ${self.esc(p.plan_type)}<br>
+                  ${searchTerm ? `<a href="index.html?search=${searchParam}" style="font-size:0.85em">View in table &rarr;</a>` : ''}
+                </div>`;
+              }).join('');
+
+              layer.bindPopup(`<div style="min-width:180px">${html}</div>`);
+            }
+          }).addTo(this.map);
+
+          this.visibleFeatureCount = visible;
+        },
+
+        toggleFilter(name, value) {
+          const idx = this.filters[name].indexOf(value);
+          if (idx === -1) {
+            this.filters[name].push(value);
+          } else {
+            this.filters[name].splice(idx, 1);
+          }
+          this.renderLayer();
+          this.updateUrl();
+        },
+
+        resetFilters() {
+          this.filters.years = [];
+          this.filters.types = [];
+          this.filters.statuses = [];
+          this.renderLayer();
+          this.updateUrl();
+        },
+
+        loadFromUrl() {
+          const params = new URLSearchParams(window.location.search);
+          if (params.has('years')) this.filters.years = params.get('years').split(',').filter(Boolean);
+          if (params.has('types')) this.filters.types = params.get('types').split(',').filter(Boolean);
+          if (params.has('statuses')) this.filters.statuses = params.get('statuses').split(',').filter(Boolean);
+          // Open panel if filters active from URL
+          if (this.activeFilterCount > 0) this.filterOpen = true;
+        },
+
+        updateUrl() {
+          const params = new URLSearchParams();
+          if (this.filters.years.length) params.set('years', this.filters.years.join(','));
+          if (this.filters.types.length) params.set('types', this.filters.types.join(','));
+          if (this.filters.statuses.length) params.set('statuses', this.filters.statuses.join(','));
+
+          const url = params.toString() ? `?${params.toString()}` : window.location.pathname;
+          window.history.replaceState({}, '', url);
         },
 
         esc(str) {

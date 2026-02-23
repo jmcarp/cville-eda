@@ -69,6 +69,7 @@ def build_parcels(
                     "units": p.get("units"),
                     "status": p.get("status", ""),
                     "plan_type": p.get("plan_type", ""),
+                    "application_date": p.get("application_date"),
                 }
                 for p in projects
             ]
