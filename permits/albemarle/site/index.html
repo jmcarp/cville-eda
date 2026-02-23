@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Albemarle County Development Projects</title>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    [x-cloak] {
+      display: none !important;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      margin: 0 0 20px 0;
+      font-size: 1.5rem;
+    }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #666;
+      text-transform: uppercase;
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+    }
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: #0066cc;
+    }
+    .filter-group input[type="number"] {
+      width: 80px;
+    }
+    .filter-group input[type="text"] {
+      width: 200px;
+    }
+    .multi-select {
+      position: relative;
+    }
+    .multi-select-button {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      background: white;
+      cursor: pointer;
+      min-width: 120px;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .multi-select-button:hover {
+      border-color: #bbb;
+    }
+    .multi-select-button .arrow {
+      margin-left: 8px;
+      font-size: 0.7rem;
+    }
+    .multi-select-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      z-index: 100;
+      max-height: 250px;
+      overflow-y: auto;
+      margin-top: 2px;
+    }
+    .multi-select-option {
+      padding: 8px 10px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .multi-select-option:hover {
+      background: #f5f5f5;
+    }
+    .multi-select-option input {
+      margin: 0;
+    }
+    .table-container {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    th {
+      background: #f9f9f9;
+      font-weight: 600;
+      color: #555;
+      position: sticky;
+      top: 0;
+    }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover {
+      background: #f0f0f0;
+    }
+    th .sort-indicator {
+      margin-left: 4px;
+      opacity: 0.3;
+    }
+    th.sorted .sort-indicator {
+      opacity: 1;
+    }
+    tr.data-row {
+      cursor: pointer;
+    }
+    tr.data-row:hover {
+      background: #f8f8f8;
+    }
+    tr.expanded {
+      background: #f0f7ff;
+    }
+    tr.expanded:hover {
+      background: #e8f0fa;
+    }
+    .status {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    .status-approved { background: #d4edda; color: #155724; }
+    .status-active { background: #cce5ff; color: #004085; }
+    .status-review { background: #fff3cd; color: #856404; }
+    .status-hold { background: #fce4ec; color: #880e4f; }
+    .status-closed { background: #e2e3e5; color: #383d41; }
+    .detail-row {
+      padding: 16px 20px 16px 48px;
+      background: #fafafa;
+    }
+    .detail-row .description {
+      margin-bottom: 12px;
+      padding: 10px;
+      background: white;
+      border: 1px solid #eee;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .detail-row h4 {
+      margin: 12px 0 6px 0;
+      font-size: 0.85rem;
+      color: #555;
+    }
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      background: #eef2f7;
+      border: 1px solid #d5dce6;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    a.tag {
+      color: inherit;
+      text-decoration: none;
+    }
+    a.tag:hover {
+      text-decoration: underline;
+    }
+    .related-table {
+      width: 100%;
+      font-size: 0.8rem;
+      border-collapse: collapse;
+    }
+    .related-table th,
+    .related-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #eee;
+      text-align: left;
+    }
+    .related-table th {
+      background: #f5f5f5;
+      font-weight: 600;
+      position: static;
+    }
+    .summary {
+      padding: 12px 16px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #eee;
+      font-size: 0.875rem;
+      color: #666;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #888;
+    }
+    .error {
+      text-align: center;
+      padding: 40px;
+      color: #cc0000;
+    }
+    .units {
+      font-weight: 600;
+    }
+    .valuation {
+      font-family: "SF Mono", "Menlo", monospace;
+      font-size: 0.8rem;
+    }
+    @media (max-width: 768px) {
+      .filters {
+        flex-direction: column;
+      }
+      .filter-group input[type="text"] {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div x-data="projectTable()" x-init="loadData()">
+    <h1 style="display:flex;align-items:center;gap:16px">
+      Albemarle County Development Projects
+      <a href="map.html" style="font-size:0.875rem;font-weight:normal;color:#0066cc;text-decoration:none">Map View &rarr;</a>
+    </h1>
+
+    <template x-if="loading">
+      <div class="loading">Loading projects...</div>
+    </template>
+
+    <template x-if="error">
+      <div class="error" x-text="error"></div>
+    </template>
+
+    <template x-if="!loading && !error">
+      <div>
+        <div class="filters">
+          <div class="filter-group">
+            <label>Search</label>
+            <input type="text" x-model="filters.search" @input.debounce.300ms="updateUrl()" placeholder="Address or project name...">
+          </div>
+          <div class="filter-group">
+            <label>Min Units</label>
+            <input type="number" x-model.number="filters.minUnits" @input.debounce.300ms="updateUrl()" placeholder="0">
+          </div>
+          <div class="filter-group">
+            <label>Max Units</label>
+            <input type="number" x-model.number="filters.maxUnits" @input.debounce.300ms="updateUrl()" placeholder="Any">
+          </div>
+          <div class="filter-group">
+            <label>Type</label>
+            <div class="multi-select" @click.outside="dropdowns.type = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.type = !dropdowns.type">
+                <span x-text="filters.types.length ? filters.types.length + ' selected' : 'All'"></span>
+                <span class="arrow">&#x25BC;</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.type" x-cloak>
+                <template x-for="t in uniqueTypes" :key="t">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="t" :checked="filters.types.includes(t)" @change="toggleFilter('types', t)">
+                    <span x-text="t"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <div class="multi-select" @click.outside="dropdowns.status = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.status = !dropdowns.status">
+                <span x-text="filters.statuses.length ? filters.statuses.length + ' selected' : 'All'"></span>
+                <span class="arrow">&#x25BC;</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.status" x-cloak>
+                <template x-for="s in uniqueStatuses" :key="s">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="s" :checked="filters.statuses.includes(s)" @change="toggleFilter('statuses', s)">
+                    <span x-text="s"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>Zone</label>
+            <div class="multi-select" @click.outside="dropdowns.zone = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.zone = !dropdowns.zone">
+                <span x-text="filters.zones.length ? filters.zones.length + ' selected' : 'All'"></span>
+                <span class="arrow">&#x25BC;</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.zone" x-cloak>
+                <template x-for="z in uniqueZones" :key="z">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="z" :checked="filters.zones.includes(z)" @change="toggleFilter('zones', z)">
+                    <span x-text="z"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+          <div class="filter-group">
+            <label>District</label>
+            <div class="multi-select" @click.outside="dropdowns.district = false">
+              <button type="button" class="multi-select-button" @click="dropdowns.district = !dropdowns.district">
+                <span x-text="filters.districts.length ? filters.districts.length + ' selected' : 'All'"></span>
+                <span class="arrow">&#x25BC;</span>
+              </button>
+              <div class="multi-select-dropdown" x-show="dropdowns.district" x-cloak>
+                <template x-for="d in uniqueDistricts" :key="d">
+                  <label class="multi-select-option">
+                    <input type="checkbox" :value="d" :checked="filters.districts.includes(d)" @change="toggleFilter('districts', d)">
+                    <span x-text="d"></span>
+                  </label>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="summary">
+          Showing <strong x-text="filteredProjects.length"></strong> of <strong x-text="projects.length"></strong> projects
+          (<strong x-text="totalUnits"></strong> total units)
+        </div>
+
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Address</th>
+                <th class="sortable" :class="{ sorted: sortBy === 'units' }" @click="sort('units')">
+                  Units <span class="sort-indicator" x-text="sortBy === 'units' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'type' }" @click="sort('type')">
+                  Type <span class="sort-indicator" x-text="sortBy === 'type' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th>Project Name</th>
+                <th class="sortable" :class="{ sorted: sortBy === 'zone' }" @click="sort('zone')">
+                  Zone <span class="sort-indicator" x-text="sortBy === 'zone' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'district' }" @click="sort('district')">
+                  District <span class="sort-indicator" x-text="sortBy === 'district' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'status' }" @click="sort('status')">
+                  Status <span class="sort-indicator" x-text="sortBy === 'status' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'valuation' }" @click="sort('valuation')">
+                  Valuation <span class="sort-indicator" x-text="sortBy === 'valuation' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'applied' }" @click="sort('applied')">
+                  Applied <span class="sort-indicator" x-text="sortBy === 'applied' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+                <th class="sortable" :class="{ sorted: sortBy === 'completed' }" @click="sort('completed')">
+                  Completed <span class="sort-indicator" x-text="sortBy === 'completed' ? (sortDir === 'asc' ? '&#x25B2;' : '&#x25BC;') : '&#x25BC;'"></span>
+                </th>
+              </tr>
+            </thead>
+            <template x-for="project in sortedProjects" :key="project.plan_id">
+              <tbody>
+                <tr class="data-row" :class="{ expanded: expanded.has(project.plan_id) }" @click="toggleExpand(project.plan_id)">
+                  <td x-text="project.addresses[0] || '—'"></td>
+                  <td class="units" x-text="project.units ?? '—'"></td>
+                  <td x-text="project.plan_type"></td>
+                  <td x-text="project.project_name || ''"></td>
+                  <td x-text="project.zone"></td>
+                  <td x-text="project.district"></td>
+                  <td><span class="status" :class="statusClass(project.status)" x-text="project.status"></span></td>
+                  <td class="valuation" x-text="formatCurrency(project.valuation)"></td>
+                  <td x-text="project.application_date || '—'"></td>
+                  <td x-text="project.complete_date || '—'"></td>
+                </tr>
+                <tr x-show="expanded.has(project.plan_id)">
+                  <td colspan="10" class="detail-row">
+                    <template x-if="project.description">
+                      <div>
+                        <h4>Description</h4>
+                        <div class="description" x-text="project.description"></div>
+                      </div>
+                    </template>
+                    <template x-if="project.addresses.length > 1">
+                      <div>
+                        <h4>All Addresses</h4>
+                        <div class="tag-list">
+                          <template x-for="addr in project.addresses" :key="addr">
+                            <a class="tag" :href="'https://www.google.com/maps/search/' + encodeURIComponent(addr + ', Albemarle County, VA')" target="_blank" rel="noopener" @click.stop x-text="addr"></a>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                    <template x-if="project.parcels && project.parcels.length > 0">
+                      <div>
+                        <h4>Parcels</h4>
+                        <div class="tag-list">
+                          <template x-for="parcel in project.parcels" :key="parcel">
+                            <span class="tag" x-text="parcel"></span>
+                          </template>
+                        </div>
+                      </div>
+                    </template>
+                    <template x-if="project.lots">
+                      <div>
+                        <h4>Lots</h4>
+                        <span x-text="project.lots"></span>
+                      </div>
+                    </template>
+                    <template x-if="project.square_footage">
+                      <div>
+                        <h4>Square Footage</h4>
+                        <span x-text="project.square_footage.toLocaleString()"></span>
+                      </div>
+                    </template>
+                    <template x-if="project.related_plans && project.related_plans.length > 0">
+                      <div>
+                        <h4>Related Plans (<span x-text="project.plan_count"></span> total)</h4>
+                        <table class="related-table">
+                          <thead>
+                            <tr>
+                              <th>Plan Number</th>
+                              <th>Type</th>
+                              <th>Work Class</th>
+                              <th>Status</th>
+                              <th>Applied</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <template x-for="rp in project.related_plans" :key="rp.plan_number">
+                              <tr>
+                                <td x-text="rp.plan_number"></td>
+                                <td x-text="rp.plan_type"></td>
+                                <td x-text="rp.work_class || ''"></td>
+                                <td><span class="status" :class="statusClass(rp.status)" x-text="rp.status"></span></td>
+                                <td x-text="rp.application_date || '—'"></td>
+                              </tr>
+                            </template>
+                          </tbody>
+                        </table>
+                      </div>
+                    </template>
+                  </td>
+                </tr>
+              </tbody>
+            </template>
+          </table>
+        </div>
+      </div>
+    </template>
+  </div>
+
+  <script>
+    function projectTable() {
+      return {
+        projects: [],
+        loading: true,
+        error: null,
+        sortBy: 'units',
+        sortDir: 'desc',
+        filters: {
+          search: '',
+          minUnits: null,
+          maxUnits: null,
+          types: [],
+          statuses: [],
+          zones: [],
+          districts: []
+        },
+        dropdowns: {
+          type: false,
+          status: false,
+          zone: false,
+          district: false
+        },
+        expanded: new Set(),
+
+        async loadData() {
+          try {
+            const response = await fetch('data.json');
+            if (!response.ok) throw new Error('Failed to load data.json');
+            const data = await response.json();
+            this.projects = data.projects;
+            this.loading = false;
+            this.loadFromUrl();
+          } catch (e) {
+            this.error = 'Failed to load data. Make sure to run build_site.py first.';
+            this.loading = false;
+          }
+        },
+
+        loadFromUrl() {
+          const params = new URLSearchParams(window.location.search);
+          if (params.has('sort')) this.sortBy = params.get('sort');
+          if (params.has('dir')) this.sortDir = params.get('dir');
+          if (params.has('search')) this.filters.search = params.get('search');
+          if (params.has('minUnits')) this.filters.minUnits = parseInt(params.get('minUnits')) || null;
+          if (params.has('maxUnits')) this.filters.maxUnits = parseInt(params.get('maxUnits')) || null;
+          if (params.has('types')) this.filters.types = params.get('types').split(',').filter(Boolean);
+          if (params.has('statuses')) this.filters.statuses = params.get('statuses').split(',').filter(Boolean);
+          if (params.has('zones')) this.filters.zones = params.get('zones').split(',').filter(Boolean);
+          if (params.has('districts')) this.filters.districts = params.get('districts').split(',').filter(Boolean);
+        },
+
+        updateUrl() {
+          const params = new URLSearchParams();
+          if (this.sortBy !== 'units') params.set('sort', this.sortBy);
+          if (this.sortDir !== 'desc') params.set('dir', this.sortDir);
+          if (this.filters.search) params.set('search', this.filters.search);
+          if (this.filters.minUnits != null && this.filters.minUnits !== '') params.set('minUnits', this.filters.minUnits);
+          if (this.filters.maxUnits != null && this.filters.maxUnits !== '') params.set('maxUnits', this.filters.maxUnits);
+          if (this.filters.types.length) params.set('types', this.filters.types.join(','));
+          if (this.filters.statuses.length) params.set('statuses', this.filters.statuses.join(','));
+          if (this.filters.zones.length) params.set('zones', this.filters.zones.join(','));
+          if (this.filters.districts.length) params.set('districts', this.filters.districts.join(','));
+
+          const url = params.toString() ? `?${params.toString()}` : window.location.pathname;
+          window.history.replaceState({}, '', url);
+        },
+
+        get uniqueTypes() {
+          return [...new Set(this.projects.map(p => p.plan_type))].filter(t => t && t !== '?').sort();
+        },
+
+        get uniqueStatuses() {
+          return [...new Set(this.projects.map(p => p.status))].filter(s => s).sort();
+        },
+
+        get uniqueZones() {
+          return [...new Set(this.projects.map(p => p.zone))].filter(z => z && z !== '?').sort();
+        },
+
+        get uniqueDistricts() {
+          return [...new Set(this.projects.map(p => p.district))].filter(d => d && d !== '?').sort();
+        },
+
+        get filteredProjects() {
+          return this.projects.filter(p => {
+            if (this.filters.search) {
+              const search = this.filters.search.toLowerCase();
+              const addrMatch = p.addresses.some(a => a.toLowerCase().includes(search));
+              const nameMatch = (p.project_name || '').toLowerCase().includes(search);
+              const parcelMatch = (p.parcels || []).some(pin => pin.toLowerCase().includes(search));
+              const planMatch = (p.plan_number || '').toLowerCase().includes(search)
+                || (p.project_number || '').toLowerCase().includes(search)
+                || (p.related_plans || []).some(rp => (rp.plan_number || '').toLowerCase().includes(search));
+              if (!addrMatch && !nameMatch && !parcelMatch && !planMatch) return false;
+            }
+            if (this.filters.minUnits != null && this.filters.minUnits !== '') {
+              if (p.units == null || p.units < this.filters.minUnits) return false;
+            }
+            if (this.filters.maxUnits != null && this.filters.maxUnits !== '') {
+              if (p.units == null || p.units > this.filters.maxUnits) return false;
+            }
+            if (this.filters.types.length > 0 && !this.filters.types.includes(p.plan_type)) return false;
+            if (this.filters.statuses.length > 0 && !this.filters.statuses.includes(p.status)) return false;
+            if (this.filters.zones.length > 0 && !this.filters.zones.includes(p.zone)) return false;
+            if (this.filters.districts.length > 0 && !this.filters.districts.includes(p.district)) return false;
+            return true;
+          });
+        },
+
+        get sortedProjects() {
+          const sorted = [...this.filteredProjects];
+          sorted.sort((a, b) => {
+            let aVal, bVal;
+            switch (this.sortBy) {
+              case 'units':
+                aVal = a.units ?? -1;
+                bVal = b.units ?? -1;
+                break;
+              case 'type':
+                aVal = a.plan_type || '';
+                bVal = b.plan_type || '';
+                break;
+              case 'zone':
+                aVal = a.zone || '';
+                bVal = b.zone || '';
+                break;
+              case 'district':
+                aVal = a.district || '';
+                bVal = b.district || '';
+                break;
+              case 'status':
+                aVal = a.status || '';
+                bVal = b.status || '';
+                break;
+              case 'valuation':
+                aVal = a.valuation ?? -1;
+                bVal = b.valuation ?? -1;
+                break;
+              case 'applied':
+                aVal = a.application_date || '';
+                bVal = b.application_date || '';
+                break;
+              case 'completed':
+                aVal = a.complete_date || '';
+                bVal = b.complete_date || '';
+                break;
+              default:
+                return 0;
+            }
+            if (aVal < bVal) return this.sortDir === 'asc' ? -1 : 1;
+            if (aVal > bVal) return this.sortDir === 'asc' ? 1 : -1;
+            return 0;
+          });
+          return sorted;
+        },
+
+        get totalUnits() {
+          return this.filteredProjects.reduce((sum, p) => sum + (p.units || 0), 0);
+        },
+
+        sort(column) {
+          if (this.sortBy === column) {
+            this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+          } else {
+            this.sortBy = column;
+            this.sortDir = 'desc';
+          }
+          this.updateUrl();
+        },
+
+        toggleFilter(filterName, value) {
+          const idx = this.filters[filterName].indexOf(value);
+          if (idx === -1) {
+            this.filters[filterName].push(value);
+          } else {
+            this.filters[filterName].splice(idx, 1);
+          }
+          this.updateUrl();
+        },
+
+        toggleExpand(planId) {
+          if (this.expanded.has(planId)) {
+            this.expanded.delete(planId);
+          } else {
+            this.expanded.add(planId);
+          }
+          // Force reactivity
+          this.expanded = new Set(this.expanded);
+        },
+
+        statusClass(status) {
+          if (!status) return 'status-closed';
+          const s = status.toLowerCase();
+          if (s === 'approved') return 'status-approved';
+          if (s === 'complete') return 'status-approved';
+          if (s === 'in review') return 'status-review';
+          if (s === 'submitted' || s === 'submitted - online') return 'status-review';
+          if (s === 'fees paid' || s === 'fees due') return 'status-active';
+          if (s === 'on hold' || s.includes('deferred')) return 'status-hold';
+          if (s === 'denied' || s === 'void' || s === 'withdrawn' || s === 'review expired') return 'status-closed';
+          return 'status-closed';
+        },
+
+        formatCurrency(value) {
+          if (value == null) return '—';
+          return '$' + value.toLocaleString('en-US', { maximumFractionDigits: 0 });
+        },
+
+        escapeHtml(str) {
+          if (!str) return '';
+          return str.replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;');
+        }
+      };
+    }
+  </script>
+</body>
+</html>

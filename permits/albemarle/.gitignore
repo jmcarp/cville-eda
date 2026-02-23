@@ -1,0 +1,11 @@
+__pycache__/
+
+# Downloaded data
+plans.csv
+plans.jsonl
+changelog.jsonl
+parcels.zip
+
+# Generated files
+site/data.json
+site/parcels.geojson
