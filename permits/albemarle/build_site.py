@@ -24,6 +24,7 @@ BASE_PATH = Path(__file__).parent
 PLANS_JSONL = BASE_PATH / "plans.jsonl"
 OVERRIDES_YAML = BASE_PATH / "overrides.yaml"
 PARCELS_ZIP = BASE_PATH / "parcels.zip"
+HISTORICAL_DIR = BASE_PATH / "parcels_historical"
 OUTPUT_PATH = BASE_PATH / "site" / "data.json"
 GEOJSON_PATH = BASE_PATH / "site" / "parcels.geojson"
 
@@ -84,7 +85,12 @@ def main() -> int:
             for pin in project.get("parcels", []):
                 pin_to_projects[pin].append(project)
 
-        geojson = build_parcels(PARCELS_ZIP, dict(pin_to_projects))
+        # Historical parcel zips as fallback, newest-first
+        fallback_zips = sorted(
+            HISTORICAL_DIR.glob("Parcels*.zip"), reverse=True
+        ) if HISTORICAL_DIR.exists() else []
+
+        geojson = build_parcels(PARCELS_ZIP, dict(pin_to_projects), fallback_zips)
         with open(GEOJSON_PATH, "w") as f:
             json.dump(geojson, f)
         size_kb = GEOJSON_PATH.stat().st_size / 1024

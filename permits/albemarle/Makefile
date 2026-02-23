@@ -1,4 +1,4 @@
-.PHONY: fetch fetch-parcels build serve deploy clean
+.PHONY: fetch fetch-parcels fetch-historical-parcels build serve deploy clean
 
 # Download plan data from Socrata CSV
 fetch:
@@ -7,6 +7,10 @@ fetch:
 # Download parcel shapefile from Albemarle County GIS
 fetch-parcels:
 	uv run fetch_parcels.py
+
+# Download historical parcel snapshots (2001-2024) for fallback matching
+fetch-historical-parcels:
+	uv run fetch_parcels.py --historical
 
 # Build the static site (generate data.json + parcels.geojson)
 build:
@@ -23,3 +27,4 @@ deploy:
 # Clean generated files
 clean:
 	rm -f site/data.json site/parcels.geojson parcels.zip
+	rm -rf parcels_historical/

@@ -5,6 +5,7 @@ plans.csv
 plans.jsonl
 changelog.jsonl
 parcels.zip
+parcels_historical/
 
 # Generated files
 site/data.json
