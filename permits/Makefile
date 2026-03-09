@@ -1,5 +1,5 @@
 .PHONY: fetch-cville fetch-cville-parcels fetch-albemarle fetch-albemarle-parcels \
-       build-cville build-albemarle build serve deploy clean
+       build-cville build-albemarle build test serve deploy clean
 
 # Charlottesville
 fetch-cville:
@@ -23,6 +23,9 @@ build-albemarle:
 
 # Combined
 build: build-cville build-albemarle
+
+test:
+	cd albemarle && uv run --with pydantic --with pyyaml --with pytest python -m pytest test_extract_units.py -v
 
 serve:
 	cd site && python -m http.server 8000

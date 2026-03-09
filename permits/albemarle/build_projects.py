@@ -35,23 +35,31 @@ STATUS_PRIORITY = {
     "Withdrawn": 10,
 }
 
-# Patterns to extract unit counts from description text, ordered by specificity
+# Patterns to extract unit counts from description text, ordered by specificity.
+# Capture group matches digits with optional comma separators (e.g. "1,600").
+_NUM = r"(\d[\d,]*)"
 _UNIT_PATTERNS = [
-    (re.compile(r"(\d+)\s*(?:dwelling|residential)\s*units?", re.I), "dwelling"),
+    (re.compile(_NUM + r"\s*(?:dwelling|residential)\s*units?", re.I), "dwelling"),
     (
         re.compile(
-            r"(\d+)\s*(?:apartment|townhome|townhouse|condo)\s*units?", re.I
+            _NUM + r"\s*(?:apartment|townhome|townhouse|condo|multifamily|multi-family)\s*units?", re.I
         ),
         "housing_type",
     ),
-    (re.compile(r"(\d+)\s+units?\b", re.I), "generic"),
+    (re.compile(_NUM + r"\s+units?\b", re.I), "generic"),
 ]
 
-_LOT_PATTERN = re.compile(r"(\d+)\s*(?:lots?|parcels?)\b", re.I)
+_LOT_PATTERN = re.compile(_NUM + r"\s*(?:lots?|parcels?)\b", re.I)
+
+# Density: "N dwelling units per acre", "N du/acre", "N units per acre", etc.
+_DENSITY_PATTERN = re.compile(
+    r"(\d+(?:\.\d+)?)\s*(?:dwelling\s+units?|du|units?)\s*(?:per\s+acre|/\s*acre)",
+    re.I,
+)
 
 # Context that invalidates a unit match (preceding or following text)
 _EXCLUDE_BEFORE = re.compile(r"(?:sq|square|\$|acre)\s*$", re.I)
-_EXCLUDE_AFTER = re.compile(r"^\s*(?:sf|square\s*feet)", re.I)
+_EXCLUDE_AFTER = re.compile(r"^\s*(?:sf|square\s*feet|per\s*acre|/\s*acre)", re.I)
 
 
 def extract_units(description: str) -> tuple[int | None, str | None]:
@@ -64,8 +72,8 @@ def extract_units(description: str) -> tuple[int | None, str | None]:
 
     for pattern, match_type in _UNIT_PATTERNS:
         for m in pattern.finditer(description):
-            count = int(m.group(1))
-            if count < 2 or count > 2000:
+            count = int(m.group(1).replace(",", ""))
+            if count < 2 or count > 4000:
                 continue
             # Check context exclusions
             before = description[: m.start()]
@@ -84,8 +92,8 @@ def extract_lots(description: str) -> int | None:
     if not description:
         return None
     for m in _LOT_PATTERN.finditer(description):
-        count = int(m.group(1))
-        if 2 <= count <= 2000:
+        count = int(m.group(1).replace(",", ""))
+        if 2 <= count <= 4000:
             before = description[: m.start()]
             after = description[m.end() :]
             if _EXCLUDE_BEFORE.search(before):
@@ -94,6 +102,22 @@ def extract_lots(description: str) -> int | None:
                 continue
             return count
     return None
+
+
+def extract_density(description: str) -> float | None:
+    """Extract residential density (units per acre) from description text.
+
+    Returns the highest density mentioned, or None.
+    """
+    if not description:
+        return None
+    best: float | None = None
+    for m in _DENSITY_PATTERN.finditer(description):
+        val = float(m.group(1))
+        if 0.1 <= val <= 200:
+            if best is None or val > best:
+                best = val
+    return best
 
 
 _PLAN_NUM = r"[A-Z]{2,}\s*[-\d]+"
@@ -216,19 +240,22 @@ def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
             parcels.append(p.main_parcel_number)
             seen_parcel.add(p.main_parcel_number)
 
-    # Extract units from all descriptions in group, take highest
+    # Extract units, lots, density from all descriptions in group, take highest
     best_units: int | None = None
-    best_match_type: str | None = None
     best_lots: int | None = None
+    best_density: float | None = None
 
     for p in group:
-        units, match_type = extract_units(p.description)
+        units, _ = extract_units(p.description)
         if units is not None and (best_units is None or units > best_units):
             best_units = units
-            best_match_type = match_type
         lots = extract_lots(p.description)
         if lots is not None and (best_lots is None or lots > best_lots):
             best_lots = lots
+        density = extract_density(p.description)
+        if density is not None and (best_density is None or density > best_density):
+            best_density = density
+
 
     # Aggregate valuation and square footage
     total_valuation = None
@@ -267,6 +294,7 @@ def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
         "status": primary.plan_status,
         "units": best_units,
         "lots": best_lots,
+        "density": best_density,
         "addresses": addresses,
         "parcels": parcels,
         "zone": primary.main_zone,
@@ -411,6 +439,7 @@ def apply_overrides(
             for key in [
                 "units",
                 "lots",
+                "density",
                 "plan_type",
                 "status",
                 "zone",
@@ -433,6 +462,7 @@ def apply_overrides(
                 "status": add.get("status", "?"),
                 "units": add.get("units"),
                 "lots": add.get("lots"),
+                "density": add.get("density"),
                 "addresses": [add["address"]] if "address" in add else [],
                 "parcels": [add["parcel"]] if "parcel" in add else [],
                 "zone": add.get("zone", "?"),

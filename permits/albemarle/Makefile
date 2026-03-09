@@ -1,4 +1,4 @@
-.PHONY: fetch fetch-parcels fetch-historical-parcels build serve clean
+.PHONY: fetch fetch-parcels fetch-historical-parcels build test serve clean
 
 # Download plan data from Socrata CSV
 fetch:
@@ -11,6 +11,10 @@ fetch-parcels:
 # Download historical parcel snapshots (2001-2024) for fallback matching
 fetch-historical-parcels:
 	uv run fetch_parcels.py --historical
+
+# Run unit extraction tests
+test:
+	uv run --with pydantic --with pyyaml --with pytest python -m pytest test_extract_units.py -v
 
 # Build the site data (outputs to ../site/albemarle/)
 build:
