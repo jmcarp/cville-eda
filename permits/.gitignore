@@ -1,7 +1,17 @@
+# Local config and caches
+.env
+.wrangler/
+__pycache__/
+
 # Downloaded data
 permits.jsonl
 permits_with_comments.jsonl
 parcels.json
+parcels_geo.geojson
+html_cache/
 
 # Generated files
-site/data.json
+site/cville/data.json
+site/cville/parcels.geojson
+site/albemarle/data.json
+site/albemarle/parcels.geojson

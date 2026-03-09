@@ -7,6 +7,4 @@ changelog.jsonl
 parcels.zip
 parcels_historical/
 
-# Generated files
-site/data.json
-site/parcels.geojson
+# Generated files (now output to ../site/albemarle/)

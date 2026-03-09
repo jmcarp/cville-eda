@@ -25,8 +25,9 @@ PLANS_JSONL = BASE_PATH / "plans.jsonl"
 OVERRIDES_YAML = BASE_PATH / "overrides.yaml"
 PARCELS_ZIP = BASE_PATH / "parcels.zip"
 HISTORICAL_DIR = BASE_PATH / "parcels_historical"
-OUTPUT_PATH = BASE_PATH / "site" / "data.json"
-GEOJSON_PATH = BASE_PATH / "site" / "parcels.geojson"
+SITE_DIR = BASE_PATH.parent / "site" / "albemarle"
+OUTPUT_PATH = SITE_DIR / "data.json"
+GEOJSON_PATH = SITE_DIR / "parcels.geojson"
 
 
 def load_plans(path: Path) -> dict[str, AlbemarlePlan]:

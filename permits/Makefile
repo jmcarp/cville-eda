@@ -1,25 +1,35 @@
-.PHONY: fetch fetch-parcels build deploy serve clean
+.PHONY: fetch-cville fetch-cville-parcels fetch-albemarle fetch-albemarle-parcels \
+       build-cville build-albemarle build serve deploy clean
 
-# Fetch permit data from the city portal
-fetch:
-	python fetch_permits.py
+# Charlottesville
+fetch-cville:
+	uv run fetch_permits.py --start-date 2018-01-01 --output permits.jsonl
 
-# Fetch parcel/zoning data
-fetch-parcels:
-	python fetch_parcels.py
+fetch-cville-parcels:
+	uv run fetch_parcels.py
 
-# Build the static site (generate data.json)
-build:
-	python build_site.py
+build-cville:
+	uv run build_site.py
 
-# Deploy to Cloudflare Pages
-deploy:
-	wrangler pages deploy site --project-name=cville-permits --commit-dirty=true
+# Albemarle
+fetch-albemarle:
+	cd albemarle && uv run fetch_plans.py
 
-# Run a local development server
+fetch-albemarle-parcels:
+	cd albemarle && uv run fetch_parcels.py
+
+build-albemarle:
+	cd albemarle && uv run build_site.py
+
+# Combined
+build: build-cville build-albemarle
+
 serve:
 	cd site && python -m http.server 8000
 
-# Clean generated files
+deploy:
+	wrangler pages deploy site --project-name=cville-permits --commit-dirty=true
+
 clean:
-	rm -f site/data.json
+	rm -f site/cville/data.json site/cville/parcels.geojson
+	rm -f site/albemarle/data.json site/albemarle/parcels.geojson

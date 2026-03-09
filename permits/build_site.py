@@ -4,9 +4,10 @@
 # dependencies = [
 #     "pydantic",
 #     "pyyaml",
+#     "shapely",
 # ]
 # ///
-"""Generate site/data.json from permit data for the static website."""
+"""Generate site/cville/data.json and parcels.geojson from permit data."""
 
 import json
 from collections import defaultdict
@@ -175,8 +176,11 @@ def main() -> int:
     base_path = Path(__file__).parent
     permits_path = base_path / "permits.jsonl"
     parcels_path = base_path / "parcels.json"
+    parcels_geo_path = base_path / "parcels_geo.geojson"
     overrides_path = base_path / "overrides.yaml"
-    output_path = base_path / "site" / "data.json"
+    output_dir = base_path / "site" / "cville"
+    output_path = output_dir / "data.json"
+    geojson_path = output_dir / "parcels.geojson"
 
     if not permits_path.exists():
         print(f"Error: Data file not found: {permits_path}")
@@ -210,11 +214,30 @@ def main() -> int:
         "projects": serialized_projects,
     }
 
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
     with open(output_path, "w") as f:
         json.dump(output_data, f, indent=2)
 
     print(f"Wrote {len(serialized_projects)} projects to {output_path}")
+
+    # Build parcel GeoJSON if geometry file is available
+    if parcels_geo_path.exists():
+        from build_parcels import build_parcels
+
+        print("Building parcel GeoJSON...")
+        pin_to_projects: dict[str, list[dict]] = defaultdict(list)
+        for project in projects:
+            for pin in project.get("parcels", []):
+                pin_to_projects[pin].append(project)
+
+        geojson = build_parcels(parcels_geo_path, dict(pin_to_projects))
+        with open(geojson_path, "w") as f:
+            json.dump(geojson, f)
+        size_kb = geojson_path.stat().st_size / 1024
+        print(f"Wrote {geojson_path} ({size_kb:.0f} KB)")
+    else:
+        print(f"Warning: {parcels_geo_path} not found, skipping parcels.geojson")
+
     return 0
 
 

@@ -3,51 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Albemarle County Development Projects — Map</title>
+  <title>Charlottesville Area Development Projects — Map</title>
+  <link rel="stylesheet" href="shared.css">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-    [x-cloak] {
-      display: none !important;
-    }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f5f5f5;
-      color: #333;
-    }
-    .navbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 12px 20px;
-      background: white;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      z-index: 1000;
-      position: relative;
-    }
-    .navbar h1 {
-      margin: 0;
-      font-size: 1.25rem;
-      flex: 1;
-    }
+    /* Override body padding for full-bleed map */
+    body { padding: 0; }
+
     .navbar .stats {
       font-size: 0.875rem;
       color: #666;
     }
-    .navbar a {
-      font-size: 0.875rem;
-      color: #0066cc;
-      text-decoration: none;
-    }
-    .navbar a:hover {
-      text-decoration: underline;
-    }
+
     #map {
       position: absolute;
       top: 52px;
@@ -135,13 +104,13 @@
       padding: 12px;
       width: 220px;
     }
-    .filter-group {
+    .filter-body .filter-group {
       margin-bottom: 10px;
     }
-    .filter-group:last-child {
+    .filter-body .filter-group:last-child {
       margin-bottom: 0;
     }
-    .filter-group label.filter-label {
+    .filter-body label.filter-label {
       display: block;
       font-size: 0.7rem;
       font-weight: 600;
@@ -149,58 +118,17 @@
       text-transform: uppercase;
       margin-bottom: 4px;
     }
-    .multi-select {
-      position: relative;
-    }
-    .multi-select-button {
-      padding: 6px 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      background: white;
-      cursor: pointer;
+    .filter-body .multi-select-button {
       width: 100%;
-      text-align: left;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      font-size: 0.8rem;
       font-family: inherit;
       color: #333;
     }
-    .multi-select-button:hover {
-      border-color: #bbb;
-    }
-    .multi-select-button .arrow {
-      margin-left: 8px;
-      font-size: 0.7rem;
-    }
-    .multi-select-dropdown {
-      position: absolute;
-      top: 100%;
-      left: 0;
-      right: 0;
-      background: white;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      z-index: 110;
-      max-height: 250px;
-      overflow-y: auto;
-      margin-top: 2px;
-    }
-    .multi-select-option {
-      padding: 6px 10px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .filter-body .multi-select-option {
       font-size: 0.8rem;
     }
-    .multi-select-option:hover {
-      background: #f5f5f5;
-    }
-    .multi-select-option input {
-      margin: 0;
+    .filter-body .multi-select-dropdown {
+      z-index: 1100;
     }
     .reset-btn {
       display: block;
@@ -223,8 +151,9 @@
 </head>
 <body>
   <div x-data="mapApp()" x-init="init()">
-    <div class="navbar">
-      <h1>Albemarle County Development Projects</h1>
+    <nav class="navbar">
+      <a class="site-title" href="./">Cville Area Development</a>
+      <div class="spacer"></div>
       <span class="stats" x-cloak x-show="totalFeatureCount > 0">
         <template x-if="activeFilterCount > 0">
           <span x-text="visibleFeatureCount.toLocaleString() + ' of ' + totalFeatureCount.toLocaleString() + ' parcels shown'"></span>
@@ -233,8 +162,10 @@
           <span x-text="totalFeatureCount.toLocaleString() + ' parcels mapped'"></span>
         </template>
       </span>
-      <a href="index.html">Table View &rarr;</a>
-    </div>
+      <a class="active" href="map.html">Map</a>
+      <a href="cville/">Charlottesville</a>
+      <a href="albemarle/">Albemarle</a>
+    </nav>
 
     <template x-if="loading">
       <div class="loading-overlay">Loading parcels...</div>
@@ -246,7 +177,7 @@
 
     <div id="map"></div>
 
-    <!-- Filter panel (positioned over map, not a Leaflet control) -->
+    <!-- Filter panel -->
     <div class="filter-panel"
          x-cloak x-show="totalFeatureCount > 0"
          @click.stop @dblclick.stop @mousedown.stop @wheel.stop>
@@ -259,6 +190,25 @@
       </button>
 
       <div class="filter-body" x-show="filterOpen" x-cloak>
+        <!-- Jurisdiction -->
+        <div class="filter-group">
+          <label class="filter-label">Jurisdiction</label>
+          <div class="multi-select" @click.outside="dropdowns.jurisdiction = false">
+            <button type="button" class="multi-select-button" @click="dropdowns.jurisdiction = !dropdowns.jurisdiction">
+              <span x-text="filters.jurisdictions.length ? filters.jurisdictions.length + ' selected' : 'All'"></span>
+              <span class="arrow">&#x25BC;</span>
+            </button>
+            <div class="multi-select-dropdown" x-show="dropdowns.jurisdiction" x-cloak>
+              <template x-for="j in uniqueJurisdictions" :key="j">
+                <label class="multi-select-option">
+                  <input type="checkbox" :value="j" :checked="filters.jurisdictions.includes(j)" @change="toggleFilter('jurisdictions', j)">
+                  <span x-text="j"></span>
+                </label>
+              </template>
+            </div>
+          </div>
+        </div>
+
         <!-- Year -->
         <div class="filter-group">
           <label class="filter-label">Year</label>
@@ -333,29 +283,36 @@
         totalFeatureCount: 0,
         visibleFeatureCount: 0,
         map: null,
-        geojsonData: null,
+        allFeatures: [],
         geojsonLayer: null,
 
         filterOpen: false,
-        filters: { years: [], types: [], statuses: [] },
-        dropdowns: { year: false, type: false, status: false },
+        filters: { jurisdictions: [], years: [], types: [], statuses: [] },
+        dropdowns: { jurisdiction: false, year: false, type: false, status: false },
 
-        // Distinct values extracted from data
+        uniqueJurisdictions: [],
         uniqueYears: [],
         uniqueTypes: [],
         uniqueStatuses: [],
 
         get activeFilterCount() {
-          return this.filters.years.length + this.filters.types.length + this.filters.statuses.length;
+          return this.filters.jurisdictions.length +
+                 this.filters.years.length +
+                 this.filters.types.length +
+                 this.filters.statuses.length;
         },
 
         statusColor(status) {
           if (!status) return '#6c757d';
           const s = status.toLowerCase();
+          // Albemarle title-case statuses
           if (s === 'approved' || s === 'complete') return '#28a745';
           if (s === 'in review' || s === 'submitted' || s === 'submitted - online') return '#ffc107';
           if (s === 'fees paid' || s === 'fees due') return '#17a2b8';
           if (s === 'on hold' || s.includes('deferred')) return '#e91e63';
+          // Cville uppercase statuses
+          if (s === 'approvedcl' || s === 'underconst') return '#28a745';
+          if (s === 'review' || s === 'plancomm' || s === 'resubmit' || s === 'comments' || s === 'applied') return '#ffc107';
           return '#6c757d';
         },
 
@@ -394,11 +351,37 @@
 
         async loadParcels() {
           try {
-            const response = await fetch('parcels.geojson');
-            if (!response.ok) throw new Error('Failed to load parcels.geojson. Run: make fetch-parcels && make build');
-            this.geojsonData = await response.json();
-            this.totalFeatureCount = this.geojsonData.features.length;
+            // Load both GeoJSON files in parallel
+            const [cvilleResp, albResp] = await Promise.all([
+              fetch('cville/parcels.geojson').catch(() => null),
+              fetch('albemarle/parcels.geojson').catch(() => null),
+            ]);
 
+            let loaded = 0;
+
+            if (cvilleResp && cvilleResp.ok) {
+              const cvilleData = await cvilleResp.json();
+              for (const f of cvilleData.features) {
+                f.properties.jurisdiction = 'Charlottesville';
+                this.allFeatures.push(f);
+              }
+              loaded++;
+            }
+
+            if (albResp && albResp.ok) {
+              const albData = await albResp.json();
+              for (const f of albData.features) {
+                f.properties.jurisdiction = 'Albemarle';
+                this.allFeatures.push(f);
+              }
+              loaded++;
+            }
+
+            if (loaded === 0) {
+              throw new Error('No parcel data found. Run: make build');
+            }
+
+            this.totalFeatureCount = this.allFeatures.length;
             this.extractFilterValues();
             this.loadFromUrl();
             this.renderLayer();
@@ -411,11 +394,13 @@
         },
 
         extractFilterValues() {
+          const jurisdictions = new Set();
           const years = new Set();
           const types = new Set();
           const statuses = new Set();
 
-          for (const feature of this.geojsonData.features) {
+          for (const feature of this.allFeatures) {
+            jurisdictions.add(feature.properties.jurisdiction);
             for (const p of feature.properties.projects || []) {
               if (p.application_date) {
                 const year = p.application_date.substring(0, 4);
@@ -426,6 +411,7 @@
             }
           }
 
+          this.uniqueJurisdictions = [...jurisdictions].sort();
           this.uniqueYears = [...years].sort().reverse();
           this.uniqueTypes = [...types].sort();
           this.uniqueStatuses = [...statuses].sort();
@@ -445,9 +431,21 @@
           return true;
         },
 
+        featureMatchesFilters(feature) {
+          if (this.filters.jurisdictions.length > 0) {
+            if (!this.filters.jurisdictions.includes(feature.properties.jurisdiction)) return false;
+          }
+          const projects = feature.properties.projects || [];
+          if (this.filters.years.length + this.filters.types.length + this.filters.statuses.length === 0) {
+            return true;
+          }
+          return projects.some(p => this.projectMatchesFilters(p));
+        },
+
         matchingProjects(feature) {
           const projects = feature.properties.projects || [];
-          if (this.activeFilterCount === 0) return projects;
+          const projectFilterActive = this.filters.years.length + this.filters.types.length + this.filters.statuses.length > 0;
+          if (!projectFilterActive) return projects;
           return projects.filter(p => this.projectMatchesFilters(p));
         },
 
@@ -459,10 +457,11 @@
           const self = this;
           let visible = 0;
 
-          this.geojsonLayer = L.geoJSON(this.geojsonData, {
+          const geojsonData = { type: 'FeatureCollection', features: this.allFeatures };
+
+          this.geojsonLayer = L.geoJSON(geojsonData, {
             filter(feature) {
-              const matches = self.matchingProjects(feature);
-              if (matches.length > 0) {
+              if (self.featureMatchesFilters(feature)) {
                 visible++;
                 return true;
               }
@@ -480,6 +479,8 @@
             onEachFeature(feature, layer) {
               const props = feature.properties;
               const projects = self.matchingProjects(feature);
+              const jurisdiction = props.jurisdiction;
+              const tableBase = jurisdiction === 'Charlottesville' ? 'cville' : 'albemarle';
 
               const html = projects.map((p, i) => {
                 const addr = (p.addresses && p.addresses[0]) || '';
@@ -489,13 +490,15 @@
                 const searchTerm = addr || props.pin || '';
                 const searchParam = encodeURIComponent(searchTerm);
                 const sep = i > 0 ? '<hr style="margin:8px 0;border:0;border-top:1px solid #ddd">' : '';
+                const searchKey = jurisdiction === 'Charlottesville' ? 'address' : 'search';
 
                 return `${sep}<div>
                   <strong>${self.esc(name)}</strong><br>
                   ${showAddr ? self.esc(addr) + '<br>' : ''}
                   ${units ? units + '<br>' : ''}
                   <em>${self.esc(p.status)}</em> &middot; ${self.esc(p.plan_type)}<br>
-                  ${searchTerm ? `<a href="index.html?search=${searchParam}" style="font-size:0.85em">View in table &rarr;</a>` : ''}
+                  <span style="font-size:0.8em;color:#666">${self.esc(jurisdiction)}</span>
+                  ${searchTerm ? ` &middot; <a href="${tableBase}/?${searchKey}=${searchParam}" style="font-size:0.85em">View in table &rarr;</a>` : ''}
                 </div>`;
               }).join('');
 
@@ -518,6 +521,7 @@
         },
 
         resetFilters() {
+          this.filters.jurisdictions = [];
           this.filters.years = [];
           this.filters.types = [];
           this.filters.statuses = [];
@@ -527,15 +531,16 @@
 
         loadFromUrl() {
           const params = new URLSearchParams(window.location.search);
+          if (params.has('jurisdictions')) this.filters.jurisdictions = params.get('jurisdictions').split(',').filter(Boolean);
           if (params.has('years')) this.filters.years = params.get('years').split(',').filter(Boolean);
           if (params.has('types')) this.filters.types = params.get('types').split(',').filter(Boolean);
           if (params.has('statuses')) this.filters.statuses = params.get('statuses').split(',').filter(Boolean);
-          // Open panel if filters active from URL
           if (this.activeFilterCount > 0) this.filterOpen = true;
         },
 
         updateUrl() {
           const params = new URLSearchParams();
+          if (this.filters.jurisdictions.length) params.set('jurisdictions', this.filters.jurisdictions.join(','));
           if (this.filters.years.length) params.set('years', this.filters.years.join(','));
           if (this.filters.types.length) params.set('types', this.filters.types.join(','));
           if (this.filters.statuses.length) params.set('statuses', this.filters.statuses.join(','));
