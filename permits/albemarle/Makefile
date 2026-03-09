@@ -1,4 +1,4 @@
-.PHONY: fetch fetch-parcels fetch-historical-parcels build test serve clean
+.PHONY: fetch fetch-parcels fetch-historical-parcels fetch-custom-fields build test serve clean
 
 # Download plan data from Socrata CSV
 fetch:
@@ -7,6 +7,10 @@ fetch:
 # Download parcel shapefile from Albemarle County GIS
 fetch-parcels:
 	uv run fetch_parcels.py
+
+# Fetch EnerGov custom fields (2025+ plans)
+fetch-custom-fields:
+	uv run fetch_custom_fields.py
 
 # Download historical parcel snapshots (2001-2024) for fallback matching
 fetch-historical-parcels:

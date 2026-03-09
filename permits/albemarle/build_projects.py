@@ -223,7 +223,24 @@ def _is_core_type(plan: AlbemarlePlan) -> bool:
     return plan.plan_type in CORE_PLAN_TYPES
 
 
-def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
+def _get_custom_field(
+    custom_fields: dict[str, dict], plan_id: str, field_name: str
+) -> Any | None:
+    """Look up a custom field value from the EnerGov cache."""
+    entry = custom_fields.get(plan_id)
+    if not entry:
+        return None
+    field = entry.get("custom_fields", {}).get(field_name)
+    if field:
+        return field.get("value")
+    return None
+
+
+def _build_project(
+    primary: AlbemarlePlan,
+    group: list[AlbemarlePlan],
+    custom_fields: dict[str, dict],
+) -> dict:
     """Build a project dict from a primary plan and its group."""
     # Collect addresses and parcels from all plans in group
     addresses: list[str] = []
@@ -256,6 +273,19 @@ def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
         if density is not None and (best_density is None or density > best_density):
             best_density = density
 
+    # Override with structured EnerGov custom fields where available
+    energov_units: int | None = None
+    for p in group:
+        val = _get_custom_field(custom_fields, p.plan_id, "ProposedNumberofDwellingUnits")
+        if val is not None:
+            try:
+                n = int(float(val))
+                if n > 0 and (energov_units is None or n > energov_units):
+                    energov_units = n
+            except (ValueError, TypeError):
+                pass
+    if energov_units is not None:
+        best_units = energov_units
 
     # Aggregate valuation and square footage
     total_valuation = None
@@ -322,13 +352,20 @@ def _build_project(primary: AlbemarlePlan, group: list[AlbemarlePlan]) -> dict:
     return project
 
 
-def find_projects(plans: dict[str, AlbemarlePlan]) -> list[dict]:
+def find_projects(
+    plans: dict[str, AlbemarlePlan],
+    custom_fields: dict[str, dict] | None = None,
+) -> list[dict]:
     """Group plans into projects, extract units, deduplicate.
 
     Two-pass grouping:
     1. By project_number (non-empty)
     2. By main_parcel_number for ungrouped core development types
+
+    If custom_fields is provided (from EnerGov API cache), structured field
+    values override regex-extracted values where available.
     """
+    cf = custom_fields or {}
     grouped_ids: set[str] = set()
     projects: list[dict] = []
 
@@ -343,7 +380,7 @@ def find_projects(plans: dict[str, AlbemarlePlan]) -> list[dict]:
         if not any(_is_core_type(p) for p in group):
             continue
         primary = _select_primary(group)
-        projects.append(_build_project(primary, group))
+        projects.append(_build_project(primary, group, cf))
         grouped_ids.update(p.plan_id for p in group)
 
     # Pass 2: group remaining by parcel, but only core types
@@ -358,7 +395,7 @@ def find_projects(plans: dict[str, AlbemarlePlan]) -> list[dict]:
 
     for parcel, group in by_parcel.items():
         primary = _select_primary(group)
-        projects.append(_build_project(primary, group))
+        projects.append(_build_project(primary, group, cf))
         grouped_ids.update(p.plan_id for p in group)
 
     # Pass 3: remaining ungrouped core-type plans as standalone projects
@@ -367,7 +404,7 @@ def find_projects(plans: dict[str, AlbemarlePlan]) -> list[dict]:
             continue
         if not _is_core_type(plan):
             continue
-        projects.append(_build_project(plan, [plan]))
+        projects.append(_build_project(plan, [plan], cf))
 
     # Sort by units descending, then by application_date
     projects.sort(

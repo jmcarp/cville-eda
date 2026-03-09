@@ -22,6 +22,7 @@ from models import AlbemarlePlan
 
 BASE_PATH = Path(__file__).parent
 PLANS_JSONL = BASE_PATH / "plans.jsonl"
+CUSTOM_FIELDS_JSON = BASE_PATH / "custom_fields.json"
 OVERRIDES_YAML = BASE_PATH / "overrides.yaml"
 PARCELS_ZIP = BASE_PATH / "parcels.zip"
 HISTORICAL_DIR = BASE_PATH / "parcels_historical"
@@ -52,8 +53,14 @@ def main() -> int:
     plans = load_plans(PLANS_JSONL)
     print(f"Loaded {len(plans)} plans")
 
+    custom_fields = {}
+    if CUSTOM_FIELDS_JSON.exists():
+        with open(CUSTOM_FIELDS_JSON) as f:
+            custom_fields = json.load(f)
+        print(f"Loaded {len(custom_fields)} custom field entries")
+
     print("Grouping into projects...")
-    projects = find_projects(plans)
+    projects = find_projects(plans, custom_fields)
     print(f"Found {len(projects)} projects")
 
     if OVERRIDES_YAML.exists():

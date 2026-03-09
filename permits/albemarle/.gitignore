@@ -6,5 +6,6 @@ plans.jsonl
 changelog.jsonl
 parcels.zip
 parcels_historical/
+custom_fields.json
 
 # Generated files (now output to ../site/albemarle/)

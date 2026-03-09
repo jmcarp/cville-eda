@@ -1,5 +1,5 @@
 .PHONY: fetch-cville fetch-cville-parcels fetch-albemarle fetch-albemarle-parcels \
-       build-cville build-albemarle build test serve deploy clean
+       fetch-albemarle-custom-fields build-cville build-albemarle build test serve deploy clean
 
 # Charlottesville
 fetch-cville:
@@ -17,6 +17,9 @@ fetch-albemarle:
 
 fetch-albemarle-parcels:
 	cd albemarle && uv run fetch_parcels.py
+
+fetch-albemarle-custom-fields:
+	cd albemarle && uv run fetch_custom_fields.py
 
 build-albemarle:
 	cd albemarle && uv run build_site.py
