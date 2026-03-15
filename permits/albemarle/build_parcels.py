@@ -49,6 +49,7 @@ def _make_feature(
             "plan_id": p["plan_id"],
             "project_name": p.get("project_name") or "",
             "addresses": p.get("addresses", []),
+            "parcels": p.get("parcels", []),
             "units": p.get("units"),
             "status": p.get("status", ""),
             "plan_type": p.get("plan_type", ""),

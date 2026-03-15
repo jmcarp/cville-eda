@@ -496,6 +496,15 @@
                 const sep = i > 0 ? '<hr style="margin:8px 0;border:0;border-top:1px solid #ddd">' : '';
                 const searchKey = jurisdiction === 'Charlottesville' ? 'address' : 'search';
 
+                const parcelTags = (p.parcels && p.parcels.length > 1)
+                  ? '<div style="margin-top:3px">' + p.parcels.map(pin => {
+                      const isCurrent = pin === props.pin;
+                      const style = `display:inline-block;font-size:0.7em;padding:1px 5px;margin:1px 2px;border-radius:3px;text-decoration:none;${isCurrent ? 'background:#0066ff;color:white' : 'background:#e8e8e8;color:#555'}`;
+                      const href = `${tableBase}/?${searchKey}=${encodeURIComponent(pin)}`;
+                      return `<a href="${href}" style="${style}">${self.esc(pin)}</a>`;
+                    }).join('') + '</div>'
+                  : '';
+
                 return `${sep}<div>
                   <strong>${self.esc(name)}</strong><br>
                   ${showAddr ? self.esc(addr) + '<br>' : ''}
@@ -503,6 +512,7 @@
                   <em>${self.esc(p.status)}</em> &middot; ${self.esc(p.plan_type)}<br>
                   <span style="font-size:0.8em;color:#666">${self.esc(jurisdiction)}</span>
                   ${searchTerm ? ` &middot; <a href="${tableBase}/?${searchKey}=${searchParam}" style="font-size:0.85em">View in table &rarr;</a>` : ''}
+                  ${parcelTags}
                 </div>`;
               }).join('');
 
@@ -526,7 +536,7 @@
                   }
                 }
                 for (const sibling of siblingSet) {
-                  sibling.setStyle({ weight: 4, dashArray: '6 4', opacity: 1 });
+                  sibling.setStyle({ color: '#0066ff', weight: 5, dashArray: '6 4', opacity: 1, fillOpacity: 0.7 });
                   sibling.bringToFront();
                   self.highlightedLayers.push(sibling);
                 }

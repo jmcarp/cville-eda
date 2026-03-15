@@ -48,6 +48,41 @@
     a.tag:hover {
       text-decoration: underline;
     }
+    .tag a:hover {
+      text-decoration: underline;
+    }
+    .addr-tag {
+      display: inline-flex;
+      align-items: stretch;
+      padding: 0;
+      overflow: hidden;
+    }
+    .addr-tag a {
+      text-decoration: none;
+      color: inherit;
+    }
+    .addr-tag a:hover {
+      text-decoration: underline;
+    }
+    .addr-tag .addr-text {
+      padding: 3px 8px;
+    }
+    .addr-tag .addr-pin {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 6px;
+      border-left: 1px solid #c8d0da;
+      color: #888;
+    }
+    .addr-tag .addr-pin:hover {
+      color: #555;
+      text-decoration: none;
+    }
+    .addr-tag .addr-pin svg {
+      width: 12px;
+      height: 12px;
+      fill: currentColor;
+    }
     .related-table {
       width: 100%;
       font-size: 0.8rem;
@@ -257,7 +292,10 @@
                         <h4>All Addresses</h4>
                         <div class="tag-list">
                           <template x-for="addr in project.addresses" :key="addr">
-                            <a class="tag" :href="'https://www.google.com/maps/search/' + encodeURIComponent(addr + ', Albemarle County, VA')" target="_blank" rel="noopener" @click.stop x-text="addr"></a>
+                            <span class="tag addr-tag" @click.stop>
+                              <a class="addr-text" :href="'?search=' + encodeURIComponent(addr)" x-text="addr"></a>
+                              <a class="addr-pin" :href="'https://www.google.com/maps/search/' + encodeURIComponent(addr + ', Albemarle County, VA')" target="_blank" rel="noopener" title="View on Google Maps"><svg viewBox="0 0 384 512"><path d="M192 0C86 0 0 86 0 192c0 144 192 320 192 320s192-176 192-320C384 86 298 0 192 0zm0 272a80 80 0 1 1 0-160 80 80 0 0 1 0 160z"/></svg></a>
+                            </span>
                           </template>
                         </div>
                       </div>
@@ -267,7 +305,7 @@
                         <h4>Parcels</h4>
                         <div class="tag-list">
                           <template x-for="parcel in project.parcels" :key="parcel">
-                            <span class="tag" x-text="parcel"></span>
+                            <a class="tag" :href="'?search=' + encodeURIComponent(parcel)" @click.stop x-text="parcel"></a>
                           </template>
                         </div>
                       </div>
