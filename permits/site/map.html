@@ -285,6 +285,8 @@
         map: null,
         allFeatures: [],
         geojsonLayer: null,
+        planIdToLayers: {},
+        highlightedLayers: [],
 
         filterOpen: false,
         filters: { jurisdictions: [], years: [], types: [], statuses: [] },
@@ -456,6 +458,8 @@
 
           const self = this;
           let visible = 0;
+          this.planIdToLayers = {};
+          this.clearHighlights();
 
           const geojsonData = { type: 'FeatureCollection', features: this.allFeatures };
 
@@ -503,6 +507,32 @@
               }).join('');
 
               layer.bindPopup(`<div style="min-width:180px">${html}</div>`);
+
+              // Index this layer by plan_id for sibling highlighting
+              for (const p of props.projects || []) {
+                if (!p.plan_id) continue;
+                if (!self.planIdToLayers[p.plan_id]) self.planIdToLayers[p.plan_id] = [];
+                self.planIdToLayers[p.plan_id].push(layer);
+              }
+
+              layer.on('click', () => {
+                self.clearHighlights();
+                // Find all sibling layers sharing any project with this parcel
+                const siblingSet = new Set();
+                for (const p of (props.projects || [])) {
+                  if (!p.plan_id) continue;
+                  for (const sibling of (self.planIdToLayers[p.plan_id] || [])) {
+                    if (sibling !== layer) siblingSet.add(sibling);
+                  }
+                }
+                for (const sibling of siblingSet) {
+                  sibling.setStyle({ weight: 4, dashArray: '6 4', opacity: 1 });
+                  sibling.bringToFront();
+                  self.highlightedLayers.push(sibling);
+                }
+              });
+
+              layer.on('popupclose', () => self.clearHighlights());
             }
           }).addTo(this.map);
 
@@ -547,6 +577,15 @@
 
           const url = params.toString() ? `?${params.toString()}` : window.location.pathname;
           window.history.replaceState({}, '', url);
+        },
+
+        clearHighlights() {
+          if (this.geojsonLayer) {
+            for (const layer of this.highlightedLayers) {
+              this.geojsonLayer.resetStyle(layer);
+            }
+          }
+          this.highlightedLayers = [];
         },
 
         esc(str) {
